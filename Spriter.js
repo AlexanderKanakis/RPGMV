@@ -239,15 +239,17 @@ Game_Follower.prototype.refresh = function() {
 var spriter_alias_Game_Event_refresh = Game_Event.prototype.refresh;
 Game_Event.prototype.refresh = function() {
 	spriter_alias_Game_Event_refresh.call(this);
-    var commandList = this.page(this._pageIndex).list;	
-	for (var i = 0; i < commandList.length; i++) {
-    	if (commandList[i].code == 108){
-        	if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
-        		this.setAnimationInfo(this, commandList[i], true);
-        		break;
-        	}
-        }
-    }
+	if (this._pageIndex >= 0) {
+		var commandList = this.page(this._pageIndex).list;	
+		for (var i = 0; i < commandList.length; i++) {
+	    	if (commandList[i].code == 108){
+	        	if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
+	        		this.setAnimationInfo(this, commandList[i], true);
+	        		break;
+	        	}
+	        }
+	    }	
+	}
 };
 
 var spriter_alias_Game_Party_addActor = Game_Party.prototype.addActor;
@@ -524,8 +526,6 @@ Spriter_Character.prototype.setCharacter = function(character) {
 // Set sprite's objects, bones and layers
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.initSprite = function() {
-	console.log(this._animation);
-	console.log(this._animationId);
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
     this._sprite = new Sprite();
     this._group = new PIXI.display.Group(0, true);
