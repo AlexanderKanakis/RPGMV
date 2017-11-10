@@ -780,12 +780,13 @@ Spriter_Character.prototype.updateDirection = function() {
 //------------------------------------------------------------------------------------------------------------- 
 Spriter_Character.prototype.updateSprite = function() {
     if (!this._stop) {
-        if (this._character._stepAnime || (this._character.isMoving() && this._character._walkAnime)) {
+
+        this.checkChanges();
+        this.updateAnimationKey();
+        this.setCharacterSprite();
+        this.updateTagsAndVars();
+        if (this.inMotion(this._character)) {
             this._resetter = false;
-            this.checkChanges();
-            this.updateAnimationKey();
-            this.setCharacterSprite();
-            this.updateTagsAndVars();
             this.updateFrame();
         }
         else if (this._recovery == "snap") {
@@ -805,7 +806,7 @@ Spriter_Character.prototype.updateSprite = function() {
         }
         //freeze dispawns sprite when turning direction to a wall
         else if (this._recovery == "freeze") {
-            this.checkChanges();
+
         }
         else if (this._recovery == "smooth") {
             this.checkChanges();
@@ -814,6 +815,10 @@ Spriter_Character.prototype.updateSprite = function() {
     else {
         this.checkChanges();	
     }
+};
+
+Spriter_Character.prototype.inMotion = function(character) {
+    return character._stepAnime || (character.isMoving() && character._walkAnime)
 };
 
 Spriter_Character.prototype.checkChanges = function() {
@@ -932,6 +937,39 @@ Spriter_Character.prototype.updateFrame = function() {
             }  
         }
     }
+    // Animation Going Backwards
+    else if (speed < 0) {
+
+        // Works Until First Key
+        if (this._key > 0) {
+
+            // If animationFrame is smaller that previous Key Frame, then  animationFrame = previous Key Frame
+            if (this._animationFrame + speed < this._pathMain[this._key - 1].time) {
+                this._animationFrame = Number(this._pathMain[this._key - 1].time);
+            }
+            else {
+                this._animationFrame += speed;
+            }  
+        }
+
+        // Works For First Key
+        else if (this._key == 0) {
+            
+            // If animationFrame is smaller than previous Key Frame, then animationFrame = previous Key Frame
+            if (this._animationFrame + speed < 0) {
+                this._animationFrame = 0;
+            }
+            else {
+                this._animationFrame += speed;
+            }
+
+            // If animationFrame is at Start of Animation and Animation Repeats, Set To End Point
+            if (this._animationFrame == 0 && this._repeat) {
+                this._animationFrame = animLength;
+                this._key = this._pathMain.length - 1;
+            }  
+        }
+    }
     this._globalAnimationInfo.key = this._key; 
     this._globalAnimationInfo.frame = this._animationFrame;
 };
@@ -973,7 +1011,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     if (this._animationFrame == boneCurrentFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame > boneCurrentFrame && this._animationFrame < boneNextFrame && eval(isAnimated)) {
+                    else if (this._animationFrame > boneCurrentFrame && this._animationFrame < boneNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
                         this.boneMidKeyUpdate(n);
                     }
                 }
@@ -983,13 +1021,45 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     if (this._animationFrame == boneCurrentFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame > boneCurrentFrame && this._repeat && eval(isAnimated)) {
+                    else if (this._animationFrame > boneCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)) {
                         this.boneMidKeyUpdate(n); 
                     }
                     else if (this._pathTime[boneTimeline].key.length == 1){
                         this.boneKeyUpdate(n);
                     }
                     else if (this._animationFrame > boneCurrentFrame && !this._repeat) {
+                        this.boneKeyUpdate(n);
+                    }
+                }
+            }
+            else if (this._speed < 0) {
+
+                if (this._character.constructor === Game_Player) {
+                    console.log(this._animationFrame);
+                }
+                // Works Until Last Key
+                if (boneKey > 0){
+                    boneNextFrame = this._pathTime[boneTimeline].key[boneKey - 1].time;
+                    if (this._animationFrame == boneCurrentFrame) {
+                        this.boneKeyUpdate(n);
+                    }
+                    else if (this._animationFrame < boneCurrentFrame && this._animationFrame > boneNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
+                        //this.boneMidKeyUpdate(n);
+                    }
+                }
+
+                // Works For Last Key
+                else if (boneKey === 0) {
+                    if (this._animationFrame == boneCurrentFrame) {
+                        this.boneKeyUpdate(n);
+                    }
+                    else if (this._animationFrame < boneCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)) {
+                        //this.boneMidKeyUpdate(n); 
+                    }
+                    else if (this._pathTime[boneTimeline].key.length == 1){
+                        this.boneKeyUpdate(n);
+                    }
+                    else if (this._animationFrame < boneCurrentFrame && !this._repeat) {
                         this.boneKeyUpdate(n);
                     }
                 }
@@ -1020,7 +1090,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     }
 
                     // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
-                    else if (this._animationFrame > objectCurrentFrame && this._animationFrame < objectNextFrame && eval(isAnimated)) {
+                    else if (this._animationFrame > objectCurrentFrame && this._animationFrame < objectNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
                         this.objectMidKeyUpdate(i);
                     }
                 }
@@ -1034,13 +1104,50 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     }
 
                     // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
-                    else if (this._animationFrame > objectCurrentFrame && this._repeat && eval(isAnimated)){
+                    else if (this._animationFrame > objectCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)){
                         this.objectMidKeyUpdate(i);
                     }
                     else if (this._pathTime[objectTimeline].key.length == 1){
                         this.objectKeyUpdate(i);
                     }
                     else if (this._animationFrame > objectCurrentFrame && !this._repeat) {
+                        this.objectKeyUpdate(i);
+                    }
+                }    
+            }
+            else if (this._speed < 0) {
+
+                // Works Until Last Key
+                if (objectKey > 0) {
+                    objectNextFrame = this._pathTime[objectTimeline].key[objectKey - 1].time;
+
+                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
+                    if (this._animationFrame == objectCurrentFrame) {
+                        this.objectKeyUpdate(i);
+                    }
+
+                    // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
+                    else if (this._animationFrame < objectCurrentFrame && this._animationFrame > objectNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
+                        //this.objectMidKeyUpdate(i);
+                    }
+                }
+
+                // Works For Last Key
+                else if (objectKey === 0) {
+
+                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
+                    if (this._animationFrame === objectCurrentFrame) {
+                        this.objectKeyUpdate(i);
+                    }
+
+                    // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
+                    else if (this._animationFrame < objectCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)){
+                        //this.objectMidKeyUpdate(i);
+                    }
+                    else if (this._pathTime[objectTimeline].key.length == 1){
+                        this.objectKeyUpdate(i);
+                    }
+                    else if (this._animationFrame < objectCurrentFrame && !this._repeat) {
                         this.objectKeyUpdate(i);
                     }
                 }    
