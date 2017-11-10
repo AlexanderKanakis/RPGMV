@@ -92,16 +92,17 @@
 var spriter_alias_Game_CharacterBase_initmembers = Game_CharacterBase.prototype.initMembers;
 Game_CharacterBase.prototype.initMembers = function() {
     spriter_alias_Game_CharacterBase_initmembers.call(this);
-    this._skeleton = '0';
-    this._skin = '0';
-    this._skinParts = [];
-    this._spriteChildren = [];
-    this._speed = 1;
-    this._repeat = false;
-    this._stop = false;
-    this._recovery = "snap";
-    this.tag = [];
-    this.var = {};
+    this._spriter = {};
+    this._spriter._skeleton = '0';
+    this._spriter._skin = '0';
+    this._spriter._skinParts = [];
+    this._spriter._spriteChildren = [];
+    this._spriter._speed = 1;
+    this._spriter._repeat = false;
+    this._spriter._stop = false;
+    this._spriter._recovery = "snap";
+    this._spriter.tag = [];
+    this._spriter.var = {};
 };
 
 Game_CharacterBase.prototype.initGlobalVars = function () {
@@ -157,14 +158,14 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
     	notes._cellY = param[4];
 	}
     var globalInfo = this.getCharacterGlobalInfo(character);
-    character._skeleton = visible ? globalInfo._skeleton|| notes._skeleton : '0';
-    character._skin = visible ? globalInfo._skin || notes._skin : '0';
-    character._skinParts = globalInfo._skinParts || [];
-    character._spriteChildren = globalInfo._spriteChildren || [];
-    character._speed = globalInfo._speed || notes._speed;
-    character._cellX = notes._cellX;
-    character._cellY = notes._cellY;
-    character._stop = globalInfo._stop || false;
+    character._spriter._skeleton = visible ? globalInfo._skeleton|| notes._skeleton : '0';
+    character._spriter._skin = visible ? globalInfo._skin || notes._skin : '0';
+    character._spriter._skinParts = globalInfo._skinParts || [];
+    character._spriter._spriteChildren = globalInfo._spriteChildren || [];
+    character._spriter._speed = globalInfo._speed || notes._speed;
+    character._spriter._cellX = notes._cellX;
+    character._spriter._cellY = notes._cellY;
+    character._spriter._stop = globalInfo._stop || false;
 };
 
 Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
@@ -327,12 +328,12 @@ Spriteset_Map.prototype.setChildAnimationInfo = function(child) {
     globalInfo = variableMap._children["child_" + String(child._name)];
     globalInfo.tag = [];
     globalInfo.var = {};
-    child._skeleton = globalInfo._skeleton || child._skeleton;
-    child._skin = globalInfo._skin || child._skin;
-    child._speed = globalInfo._speed || child._speed;
-    child._stop = globalInfo._stop || false;
-    child.tag = globalInfo.tag || [];
-    child.var = globalInfo.var || {};
+    child._spriter._skeleton = globalInfo._skeleton || child._spriter._skeleton;
+    child._spriter._skin = globalInfo._skin || child._spriter._skin;
+    child._spriter._speed = globalInfo._speed || child._spriter._speed;
+    child._spriter._stop = globalInfo._stop || false;
+    child._spriter.tag = globalInfo.tag || [];
+    child._spriter.var = globalInfo.var || {};
 };
 
 
@@ -460,6 +461,8 @@ Spriter_Character.prototype.initMembers = function() {
     this._speed = 1;
     this._cellX = null;
     this._cellY = null;
+    this._maskX = null;
+    this._maskY = null;
     this._repeat = false;
     this._resetter = false;
     this._recovery = "snap";
@@ -471,15 +474,15 @@ Spriter_Character.prototype.setCharacter = function(character) {
     //Getting Character Meta
     this._character = character;
     this._animationId = (character._direction - 2) / 2;
-    this._skeleton = this._character._skeleton;
-    this._skin = this._character._skin;
-    this._skinParts = this._character._skinParts;
-    this._spriteChildren = this._character._spriteChildren;
-    this._cellX = this._character._cellX;
-    this._cellY = this._character._cellY;
-    this._speed = Number(this._character._speed);
-    this._recovery = this._character._recovery;
-    this._stop = this._character._stop;
+    this._skeleton = this._character._spriter._skeleton;
+    this._skin = this._character._spriter._skin;
+    this._skinParts = this._character._spriter._skinParts;
+    this._spriteChildren = this._character._spriter._spriteChildren;
+    this._cellX = this._character._spriter._cellX;
+    this._cellY = this._character._spriter._cellY;
+    this._speed = Number(this._character._spriter._speed);
+    this._recovery = this._character._spriter._recovery;
+    this._stop = this._character._spriter._stop;
 
     //Getting Globals
     if (this._character.constructor === Game_Player) { 
@@ -521,6 +524,8 @@ Spriter_Character.prototype.setCharacter = function(character) {
 // Set sprite's objects, bones and layers
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.initSprite = function() {
+	console.log(this._animation);
+	console.log(this._animationId);
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
     this._sprite = new Sprite();
     this._group = new PIXI.display.Group(0, true);
@@ -549,6 +554,15 @@ Spriter_Character.prototype.initSprite = function() {
             j++;
         }
     }
+
+    /*
+    var myMask = new PIXI.Graphics();
+	myMask.beginFill();
+	myMask.drawRect(-16, -48, 32, 48);
+	myMask.endFill();
+	this.addChild(myMask);
+	this._sprite.mask = myMask;
+	*/
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -745,8 +759,8 @@ Spriter_Character.prototype.updateDirection = function() {
         this._globalAnimationInfo.frame = 0;
         this._globalAnimationInfo.key = 0;
         this.removeChildren();
-        this._character.var = {};
-        this._character.tag = [];
+        this._character._spriter.var = {};
+        this._character._spriter.tag = [];
         this._globalAnimationInfo.var = {};
         this._globalAnimationInfo.tag = [];
         this.getAnimation(this._skeleton);
@@ -804,18 +818,18 @@ Spriter_Character.prototype.updateSprite = function() {
 
 Spriter_Character.prototype.checkChanges = function() {
 
-    if (this._skeleton !== this._character._skeleton) {
+    if (this._skeleton !== this._character._spriter._skeleton) {
         // Resetting the whole Sprite
-    	this._skeleton = this._character._skeleton;
-        this._skin = this._character._skin;
+    	this._skeleton = this._character._spriter._skeleton;
+        this._skin = this._character._spriter._skin;
         this._animationFrame = 0;
         this._key = 0;
         this._globalAnimationInfo.key = this._key; 
         this._globalAnimationInfo.frame = 0;
         this._globalAnimationInfo.key = 0;
         this.removeChildren();
-        this._character.var = {};
-        this._character.tag = [];
+        this._character._spriter.var = {};
+        this._character._spriter.tag = [];
         this._globalAnimationInfo.var = {};
         this._globalAnimationInfo.tag = [];
         this.getAnimation(this._skeleton);
@@ -828,32 +842,32 @@ Spriter_Character.prototype.checkChanges = function() {
         this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
         this._repeat = eval(this._repeat);   
     }
-    if (this._skin !== this._character._skin) {
-        this._skin = this._character._skin;
+    if (this._skin !== this._character._spriter._skin) {
+        this._skin = this._character._spriter._skin;
     }
-    if (this._skinParts !== this._character._skinParts) {
-        this._skinParts = this._character._skinParts;
+    if (this._skinParts !== this._character._spriter._skinParts) {
+        this._skinParts = this._character._spriter._skinParts;
     }
-    if (this._spriteChildren !== this._character._spriteChildren) {
-        this._spriteChildren = this._character._spriteChildren;
+    if (this._spriteChildren !== this._character._spriter._spriteChildren) {
+        this._spriteChildren = this._character._spriter._spriteChildren;
     }
-    if (this._cellX !== this._character._cellX) {
-        this._cellX = this._character._cellX;
+    if (this._cellX !== this._character._spriter._cellX) {
+        this._cellX = this._character._spriter._cellX;
         this.displaceSprite();
     }
-    if (this._cellY !== this._character._cellY) {
-        this._cellY = this._character._cellY;
+    if (this._cellY !== this._character._spriter._cellY) {
+        this._cellY = this._character._spriter._cellY;
         this.displaceSprite();
     }
-    if (this._speed !== this._character._speed) {
-        this._speed = this._character._speed;
+    if (this._speed !== this._character._spriter._speed) {
+        this._speed = this._character._spriter._speed;
         this.updateFrame();
     }
-    if (this._recovery !== this._character._recovery) {
-        this._recovery = this._character._recovery;
+    if (this._recovery !== this._character._spriter._recovery) {
+        this._recovery = this._character._spriter._recovery;
     }
-    if (this._stop !== this._character._stop) {
-        this._stop = this._character._stop;
+    if (this._stop !== this._character._spriter._stop) {
+        this._stop = this._character._spriter._stop;
     }
 };
 
@@ -1493,15 +1507,15 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
                         var varId = Number(varline[i].def);
                         var def = this._animation.entity.var_defs.i[varId];
                         if (def.type === "string") {
-                            this._character.var[def.name] = varline[i].key[j].val;
+                            this._character._spriter.var[def.name] = varline[i].key[j].val;
                             this._globalAnimationInfo.var[def.name] = varline[i].key[j].val;
                         }
                         else if (def.type === "int") {
-                            this._character.var[def.name] = parseInt(varline[i].key[j].val);
+                            this._character._spriter.var[def.name] = parseInt(varline[i].key[j].val);
                             this._globalAnimationInfo.var[def.name] = parseInt(varline[i].key[j].val);
                         }
                         else if (def.type === "float") {
-                            this._character.var[def.name] = parseFloat(varline[i].key[j].val);
+                            this._character._spriter.var[def.name] = parseFloat(varline[i].key[j].val);
                             this._globalAnimationInfo.var[def.name] = parseFloat(varline[i].key[j].val);
                         }
                     }
@@ -1522,7 +1536,7 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
                         for (var j = 0; j < tagline.key[i].tag.length; j++) {
                             var tag = tagline.key[i].tag[j];
                             var tagName = this._animation.tag_list.i[tag.t];
-                            this._character.tag.push(tagName);
+                            this._character._spriter.tag.push(tagName);
                             this._globalAnimationInfo.tag.push(tagName);
                         }
                     }
@@ -1979,51 +1993,51 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     // Events
     //-------------------------------------------------------------------------------------------------------------     
     if (command === "eventSkeleton") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        $gameMap.event(args[0])._skeleton = args[1];
-        eventGlobalInfo._skeleton = $gameMap.event(args[0])._skeleton;
+        event._skeleton = args[1];
+        eventGlobalInfo._skeleton = event._skeleton;
     }
     else if (command === "eventSkin") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        $gameMap.event(args[0])._skin = args[1];
-        $gameMap.event(args[0])._skinParts = [];
-        eventGlobalInfo._skin = $gameMap.event(args[0])._skin;
+        event._skin = args[1];
+        event._skinParts = [];
+        eventGlobalInfo._skin = event._skin;
         eventGlobalInfo._skinParts = [];
     }
     else if (command === "eventSpeed") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        $gameMap.event(args[0])._speed = Number(args[1]);
+        event._speed = Number(args[1]);
         eventGlobalInfo._speed = $gameMap.event(args[0])._speed; 
     }
     else if (command === "eventStop") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        $gameMap.event(args[0])._stop = eval(args[1]);
-        eventGlobalInfo._stop = $gameMap.event(args[0])._stop;
+        event._stop = eval(args[1]);
+        eventGlobalInfo._stop = $gameMap.event(args[0])._spriter._stop;
     }
     else if (command === "eventRecovery") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        $gameMap.event(args[0])._recovery = args[1];
+        event._recovery = args[1];
         eventGlobalInfo._recovery = $gameMap.event(args[0])._recovery;
     }
     else if (command === "eventSkinPart") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
         var a = {};
         a.skinName = args[1];
@@ -2035,19 +2049,19 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
                     break;
                 }
                 else if (i == event._skinParts.length - 1) {
-                    $gameMap.event(args[0])._skinParts.push(a);
+                    event._skinParts.push(a);
                 }
             }
         }
         else {
-            $gameMap.event(args[0])._skinParts.push(a);
+            event._skinParts.push(a);
         }
-        eventGlobalInfo._skinParts = $gameMap.event(args[0])._skinParts;
+        eventGlobalInfo._skinParts = event._skinParts;
     }
     else if (command === "eventChildSprite") {
-        event = $gameMap.event(args[0]);
-        mapId = "map_" + String(event._mapId);
-        eventId = "event_" + String(event._eventId);
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
         var a = {};
         a.skinName = args[1];
@@ -2057,23 +2071,23 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         if (event._spriteChildren.length > 0) {
             for (var i = 0; i < event._spriteChildren.length; i++) {
                 if (event._spriteChildren[i].skinName == a.skinName) {
-                    $gameMap.event(args[0])._spriteChildren[i] = a;
+                    event._spriteChildren[i] = a;
                     break;
                 }
                 else if (i == event._spriteChildren.length - 1){
-                    $gameMap.event(args[0])._spriteChildren.push(a);
+                    event._spriteChildren.push(a);
                 }
             }
         }
         else {
-            $gameMap.event(args[0])._spriteChildren.push(a);
+            event._spriteChildren.push(a);
         }
         
-        eventGlobalInfo._spriteChildren = $gameMap.event(args[0])._spriteChildren;
+        eventGlobalInfo._spriteChildren = event._spriteChildren;
         $gameVariables._data[spriterVarId]._spriteRequests.push(a);
     }
     else if (command === "eventRemoveChildSprite") {
-        event = $gameMap.event(args[0]);
+        event = $gameMap.event(args[0])._spriter;
         var a = {};
         a.skinName = args[1];
         a.sprite = args[2];
@@ -2101,27 +2115,27 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
 
     else if (command === "playerSkeleton") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        $gamePlayer._skeleton = args[0];
+        $gamePlayer._spriter._skeleton = args[0];
         playerGlobalInfo._skeleton = args[0];
     }
     else if (command === "playerSkin") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        $gamePlayer._skin = args[0];
+        $gamePlayer._spriter._skin = args[0];
         playerGlobalInfo._skin = args[0];
     }
     else if (command === "playerSpeed") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        $gamePlayer._speed = args[0];
+        $gamePlayer._spriter._speed = args[0];
         playerGlobalInfo._speed = Number(args[0]);
     }
     else if (command === "playerStop") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        $gamePlayer._stop = eval(args[0]);
+        $gamePlayer._spriter._stop = eval(args[0]);
         playerGlobalInfo._stop = eval(args[0]);    
     }
     else if (command === "playerRecovery") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        $gamePlayer._recovery = args[0];
+        $gamePlayer._spriter._recovery = args[0];
         playerGlobalInfo._recovery = args[0];
     }
     else if (command === "playerSkinPart") {
@@ -2129,21 +2143,21 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         var a = {};
         a.skinName = args[0];
         a.skinSet = args[1];
-        if ($gamePlayer._skinParts.length > 0) {
-            for (var i = 0; i < $gamePlayer._skinParts.length; i++) {
-                if ($gamePlayer._skinParts[i].skinName == a.skinName) {
-                    $gamePlayer._skinParts[i] = a;
+        if ($gamePlayer._spriter._skinParts.length > 0) {
+            for (var i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
+                if ($gamePlayer._spriter._skinParts[i].skinName == a.skinName) {
+                    $gamePlayer._spriter._skinParts[i] = a;
                     break;
                 }
-                else if (i == $gamePlayer._skinParts.length - 1) {
-                    $gamePlayer._skinParts.push(a);
+                else if (i == $gamePlayer._spriter._skinParts.length - 1) {
+                    $gamePlayer._spriter._skinParts.push(a);
                 }
             }
         }
         else {
-            $gamePlayer._skinParts.push(a);
+            $gamePlayer._spriter._skinParts.push(a);
         }
-        playerGlobalInfo._skinParts = $gamePlayer._skinParts;
+        playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
     }
     else if (command === "playerChildSprite") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
@@ -2152,21 +2166,21 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         a.sprite = args[1];
         a.parent = "player";
         a.remove = false;
-        if ($gamePlayer._spriteChildren.length > 0) {
-            for (var i = 0; i < $gamePlayer._spriteChildren.length; i++) {
-                if ($gamePlayer._spriteChildren[i].skinName == a.skinName) {
-                    $gamePlayer._spriteChildren[i] = a;
+        if ($gamePlayer._spriter._spriteChildren.length > 0) {
+            for (var i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
+                if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
+                    $gamePlayer._spriter._spriteChildren[i] = a;
                     break;
                 }
                 else if (i == event._spriteChildren.length - 1){
-                    $gamePlayer._spriteChildren.push(a);
+                    $gamePlayer._spriter._spriteChildren.push(a);
                 }
             }
         }
         else {
-            $gamePlayer._spriteChildren.push(a);
+            $gamePlayer._spriter._spriteChildren.push(a);
         }
-        playerGlobalInfo._spriteChildren = $gamePlayer._spriteChildren;
+        playerGlobalInfo._spriteChildren = $gamePlayer._spriter._spriteChildren;
         $gameVariables._data[spriterVarId]._spriteRequests.push(a);
     }
     else if (command === "playerRemoveChildSprite") {
@@ -2175,19 +2189,19 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         a.sprite = args[1];
         a.parent = "player";
         a.remove = true;
-        if ($gamePlayer._spriteChildren.length > 0) {
-            for (var i = 0; i < $gamePlayer._spriteChildren.length; i++) {
-                if ($gamePlayer._spriteChildren[i].skinName == a.skinName) {
-                    $gamePlayer._spriteChildren[i] = a;
+        if ($gamePlayer._spriter._spriteChildren.length > 0) {
+            for (var i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
+                if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
+                    $gamePlayer._spriter._spriteChildren[i] = a;
                     break;
                 }
-                else if (i == $gamePlayer._spriteChildren.length - 1){
-                    $gamePlayer._spriteChildren.push(a);
+                else if (i == $gamePlayer._spriter._spriteChildren.length - 1){
+                    $gamePlayer._spriter._spriteChildren.push(a);
                 }
             }
         }
         else {
-            $gamePlayer._spriteChildren.push(a);
+            $gamePlayer._spriter._spriteChildren.push(a);
         }
     }   
 
@@ -2196,13 +2210,13 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     //-------------------------------------------------------------------------------------------------------------     
 
     if (command === "followerSkeleton") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skeleton = args[1];
         followerGlobalInfo._skeleton = follower._skeleton;
     }
     else if (command === "followerSkin") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skin = args[1];
         follower._skinParts = [];
@@ -2210,25 +2224,25 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         followerGlobalInfo._skinParts = [];
     }
     else if (command === "followerSpeed") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0] - 1];
         follower._speed = Number(args[1]);
         followerGlobalInfo._speed = follower._speed; 
     }
     else if (command === "followerStop") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._stop = eval(args[1]);
         followerGlobalInfo._stop = follower._stop;
     }
     else if (command === "followerRecovery") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._recovery = args[1];
         followerGlobalInfo._recovery = follower._recovery;
     }
     else if (command === "followerSkinPart") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         var a = {};
         a.skinName = args[1];
@@ -2250,7 +2264,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         followerGlobalInfo._skinParts = follower._skinParts;
     }
     else if (command === "followerChildSprite") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         var a = {};
         a.skinName = args[1];
@@ -2276,7 +2290,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         $gameVariables._data[spriterVarId]._spriteRequests.push(a);
     }
     else if (command === "followerRemoveChildSprite") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1];
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         var a = {};
         a.skinName = args[1];
         a.sprite = args[2];
