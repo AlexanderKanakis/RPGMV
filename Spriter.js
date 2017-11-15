@@ -780,12 +780,11 @@ Spriter_Character.prototype.updateDirection = function() {
 //------------------------------------------------------------------------------------------------------------- 
 Spriter_Character.prototype.updateSprite = function() {
     if (!this._stop) {
-
-        this.checkChanges();
+    	this.checkChanges();
         this.updateAnimationKey();
         this.setCharacterSprite();
         this.updateTagsAndVars();
-        if (this.inMotion(this._character)) {
+        if (this.isMoving(this._character)) {
             this._resetter = false;
             this.updateFrame();
         }
@@ -801,15 +800,10 @@ Spriter_Character.prototype.updateSprite = function() {
             else {
                 this._resetter = true;
             }
-            this.checkChanges();
-            this.setCharacterSprite();
         }
-        //freeze dispawns sprite when turning direction to a wall
         else if (this._recovery == "freeze") {
-
         }
         else if (this._recovery == "smooth") {
-            this.checkChanges();
         }
     }
     else {
@@ -817,8 +811,8 @@ Spriter_Character.prototype.updateSprite = function() {
     }
 };
 
-Spriter_Character.prototype.inMotion = function(character) {
-    return character._stepAnime || (character.isMoving() && character._walkAnime)
+Spriter_Character.prototype.isMoving = function(character) {
+	return character._stepAnime || character.isMoving() && character._walkAnime;
 };
 
 Spriter_Character.prototype.checkChanges = function() {
@@ -889,9 +883,12 @@ Spriter_Character.prototype.updateAnimationKey = function() {
             break;
         }
     }
-    if (this._animationFrame == animLength) {
+    if (this._animationFrame == animLength && this._speed > 0) {
         this._key = this._pathMain.length - 1; 
         this._globalAnimationInfo.key = this._key; 
+    }
+    else if (this._pathMain.length > 1 && this._animationFrame < Number(this._pathMain[1].time) && this._speed < 0) {
+	    this._key = 0;
     }
 };
 
@@ -937,13 +934,12 @@ Spriter_Character.prototype.updateFrame = function() {
             }  
         }
     }
-    // Animation Going Backwards
     else if (speed < 0) {
 
-        // Works Until First Key
+        // Works Until Last Key
         if (this._key > 0) {
 
-            // If animationFrame is smaller that previous Key Frame, then  animationFrame = previous Key Frame
+            // If animationFrame is bigger that next Key Frame, then  animationFrame = next Key Frame
             if (this._animationFrame + speed < this._pathMain[this._key - 1].time) {
                 this._animationFrame = Number(this._pathMain[this._key - 1].time);
             }
@@ -952,10 +948,10 @@ Spriter_Character.prototype.updateFrame = function() {
             }  
         }
 
-        // Works For First Key
-        else if (this._key == 0) {
-            
-            // If animationFrame is smaller than previous Key Frame, then animationFrame = previous Key Frame
+        // Works For Last Key
+        else if (this._key === 0) {
+
+            // If animationFrame is bigger than next Key Frame, then animationFrame = next Key Frame
             if (this._animationFrame + speed < 0) {
                 this._animationFrame = 0;
             }
@@ -963,8 +959,8 @@ Spriter_Character.prototype.updateFrame = function() {
                 this._animationFrame += speed;
             }
 
-            // If animationFrame is at Start of Animation and Animation Repeats, Set To End Point
-            if (this._animationFrame == 0 && this._repeat) {
+            // If animationFrame is at End of Animation and Animation Repeats, Set To Start Point
+            if (this._animationFrame === 0 && this._repeat) {
                 this._animationFrame = animLength;
                 this._key = this._pathMain.length - 1;
             }  
@@ -982,10 +978,10 @@ Spriter_Character.prototype.setCharacterSprite = function() {
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
     // Set Bones
-    var boneCurrentFrame;
+    var bonePrevFrame;
     var boneNextFrame;
     var boneKey;
-    var boneTimeline;
+    var boneTime;
     var isAnimated;
 
     if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
@@ -997,69 +993,66 @@ Spriter_Character.prototype.setCharacterSprite = function() {
 
         // Setting Bone Values
         for(var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
-            boneTimeline = this._pathMain[this._key].bone_ref[n].timeline;
+            boneTime = this._pathMain[this._key].bone_ref[n].timeline;
             boneKey = Number(this._pathMain[this._key].bone_ref[n].key);
-            boneCurrentFrame = this._pathTime[boneTimeline].key[boneKey].time || 0;
-            isAnimated = "this._pathTime[boneTimeline].key.length > 1";
+            bonePrevFrame = this._pathTime[boneTime].key[boneKey].time || 0;
+            isAnimated = "this._pathTime[boneTime].key.length > 1";
                 
 
             if (this._speed > 0) {
 
                 // Works Until Last Key
-                if (boneKey != this._pathTime[boneTimeline].key.length - 1){
-                    boneNextFrame = this._pathTime[boneTimeline].key[boneKey + 1].time;
-                    if (this._animationFrame == boneCurrentFrame) {
+                if (boneKey != this._pathTime[boneTime].key.length - 1){
+                    boneNextFrame = this._pathTime[boneTime].key[boneKey + 1].time;
+                    if (this._animationFrame == bonePrevFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame > boneCurrentFrame && this._animationFrame < boneNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
+                    else if (this._animationFrame > bonePrevFrame && this._animationFrame < boneNextFrame  && eval(isAnimated) && this.isMoving(this._character)) {
                         this.boneMidKeyUpdate(n);
                     }
                 }
 
                 // Works For Last Key
-                else if (boneKey == this._pathTime[boneTimeline].key.length - 1) {
-                    if (this._animationFrame == boneCurrentFrame) {
+                else if (boneKey == this._pathTime[boneTime].key.length - 1) {
+                    if (this._animationFrame == bonePrevFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame > boneCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)) {
+                    else if (this._animationFrame > bonePrevFrame && this._repeat && eval(isAnimated)) {
                         this.boneMidKeyUpdate(n); 
                     }
-                    else if (this._pathTime[boneTimeline].key.length == 1){
+                    else if (this._pathTime[boneTime].key.length == 1){
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame > boneCurrentFrame && !this._repeat) {
+                    else if (this._animationFrame > bonePrevFrame && !this._repeat) {
                         this.boneKeyUpdate(n);
                     }
                 }
             }
             else if (this._speed < 0) {
 
-                if (this._character.constructor === Game_Player) {
-                    console.log(this._animationFrame);
-                }
                 // Works Until Last Key
                 if (boneKey > 0){
-                    boneNextFrame = this._pathTime[boneTimeline].key[boneKey - 1].time;
-                    if (this._animationFrame == boneCurrentFrame) {
+                    boneNextFrame = this._pathTime[boneTime].key[boneKey - 1].time;
+                    if (this._animationFrame == bonePrevFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame < boneCurrentFrame && this._animationFrame > boneNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
-                        //this.boneMidKeyUpdate(n);
+                    else if (this._animationFrame < bonePrevFrame && this._animationFrame > boneNextFrame  && eval(isAnimated) && this.isMoving(this._character)) {
+                        this.boneMidKeyUpdate(n);
                     }
                 }
 
                 // Works For Last Key
-                else if (boneKey === 0) {
-                    if (this._animationFrame == boneCurrentFrame) {
+                else if (boneKey == 0) {
+                    if (this._animationFrame == bonePrevFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame < boneCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)) {
-                        //this.boneMidKeyUpdate(n); 
+                    else if (this._animationFrame < bonePrevFrame && this._repeat && eval(isAnimated)) {
+                        this.boneMidKeyUpdate(n); 
                     }
-                    else if (this._pathTime[boneTimeline].key.length == 1){
+                    else if (this._pathTime[boneTime].key.length == 1){
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame < boneCurrentFrame && !this._repeat) {
+                    else if (this._animationFrame < bonePrevFrame && !this._repeat) {
                         this.boneKeyUpdate(n);
                     }
                 }
@@ -1090,7 +1083,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     }
 
                     // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
-                    else if (this._animationFrame > objectCurrentFrame && this._animationFrame < objectNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
+                    else if (this._animationFrame > objectCurrentFrame && this._animationFrame < objectNextFrame && eval(isAnimated)) {
                         this.objectMidKeyUpdate(i);
                     }
                 }
@@ -1104,7 +1097,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     }
 
                     // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
-                    else if (this._animationFrame > objectCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)){
+                    else if (this._animationFrame > objectCurrentFrame && this._repeat && eval(isAnimated)){
                         this.objectMidKeyUpdate(i);
                     }
                     else if (this._pathTime[objectTimeline].key.length == 1){
@@ -1116,7 +1109,6 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                 }    
             }
             else if (this._speed < 0) {
-
                 // Works Until Last Key
                 if (objectKey > 0) {
                     objectNextFrame = this._pathTime[objectTimeline].key[objectKey - 1].time;
@@ -1127,8 +1119,8 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                     }
 
                     // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
-                    else if (this._animationFrame < objectCurrentFrame && this._animationFrame > objectNextFrame && eval(isAnimated) && this.inMotion(this._character)) {
-                        //this.objectMidKeyUpdate(i);
+                    else if (this._animationFrame < objectCurrentFrame && this._animationFrame > objectNextFrame && eval(isAnimated)) {
+                        this.objectMidKeyUpdate(i);
                     }
                 }
 
@@ -1136,18 +1128,18 @@ Spriter_Character.prototype.setCharacterSprite = function() {
                 else if (objectKey === 0) {
 
                     // If this._animationFrame has a Key Time, the Object is Updated according to Key 
-                    if (this._animationFrame === objectCurrentFrame) {
+                    if (this._animationFrame == objectCurrentFrame) {
                         this.objectKeyUpdate(i);
                     }
 
                     // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
-                    else if (this._animationFrame < objectCurrentFrame && this._repeat && eval(isAnimated) && this.inMotion(this._character)){
-                        //this.objectMidKeyUpdate(i);
+                    else if (this._animationFrame < objectCurrentFrame && this._repeat && eval(isAnimated)){
+                        this.objectMidKeyUpdate(i);
                     }
                     else if (this._pathTime[objectTimeline].key.length == 1){
                         this.objectKeyUpdate(i);
                     }
-                    else if (this._animationFrame < objectCurrentFrame && !this._repeat) {
+                    else if (this._animationFrame > objectCurrentFrame && !this._repeat) {
                         this.objectKeyUpdate(i);
                     }
                 }    
@@ -1155,6 +1147,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
         }
     }
 };
+
 
 //-------------------------------------------------------------------------------------------------------------
 // Updates this_object[i] according to the animation's key info.
@@ -1302,17 +1295,29 @@ Spriter_Character.prototype.objectMidKeyUpdate = function(i) {
     else if (this._speed > 0) {
         nextKey = time + 1;
     }
+    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
+        nextKey = lastKey;
+    }
+    else if (!this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
+        nextKey = currentKey;
+    }
+    else if (this._speed < 0) {
+        nextKey = time - 1;
+    }
     var pt = Number(key[time].time) || 0;
     var nt;
 
     if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
         nt = Number(this._animation.entity.animation[this._animationId].length);
     }
+    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
+    	nt = 0;
+    }
     else {
         nt =  Number(key[nextKey].time) || 0;
     }
 
-    var t = (nt - pt) / this._speed;
+    var t = Math.abs((nt - pt) / this._speed);
     var object = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].key[time].object;
     var folderId = Number(object.folder);
     var fileId = Number(object.file);
@@ -1365,15 +1370,30 @@ Spriter_Character.prototype.objectMidKeyUpdate = function(i) {
     //Determining Spin
     var spin = Number(key[time].spin) || 1;
     var dr;
-    if (spin == -1 && nr > pr) {
-        dr = nr - pr - 360;
+
+    if (this._speed > 0) {
+    	if (spin == -1 && nr > pr) {
+        	dr = nr - pr - 360;
+	    }
+	    else if (spin == 1 && nr < pr) {
+	        dr = nr - pr + 360;
+	    }
+	    else {
+	        dr = nr - pr;
+	    }
     }
-    else if (spin == 1 && nr < pr) {
-        dr = nr - pr + 360;
+    else if (this._speed < 0) {
+    	if (spin == -1 && nr < pr) {
+        	dr = nr - pr + 360;
+	    }
+	    else if (spin == 1 && nr > pr) {
+	        dr = nr - pr - 360;
+	    }
+	    else {
+	        dr = nr - pr;
+	    }
     }
-    else {
-        dr = nr - pr;
-    }
+    
 
 	// Getting Object Values for Previous Frame
     var ox = this._object[i].x;
@@ -1472,16 +1492,25 @@ Spriter_Character.prototype.boneMidKeyUpdate = function(n) {
     else if (this._speed > 0) {
         nextKey = time + 1;
     }
+    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
+        nextKey = lastKey;
+    }
+    else if (this._speed < 0) {
+        nextKey = time - 1;
+    }
     var pt = Number(key[time].time) || 0;
     var nt;
     if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
         nt = Number(this._animation.entity.animation[this._animationId].length);
     }
+    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
+        nt = 0;
+    }
     else {
         nt =  Number(key[nextKey].time) || 0;
     }
 
-    var t = (nt - pt) / this._speed;
+    var t = Math.abs((nt - pt) / this._speed);
 
     //Getting Previous Key Bone Values
     var pBone = key[time].bone;
@@ -1506,14 +1535,27 @@ Spriter_Character.prototype.boneMidKeyUpdate = function(n) {
     //Determining Spin
     var spin = Number(key[time].spin) || 1;
     var dr;
-    if (spin == -1 && nr > pr) {
-        dr = nr - pr - 360;
+    if (this._speed > 0) {
+    	if (spin == -1 && nr > pr) {
+        	dr = nr - pr - 360;
+	    }
+	    else if (spin == 1 && nr < pr) {
+	        dr = nr - pr + 360;
+	    }
+	    else {
+	        dr = nr - pr;
+	    }
     }
-    else if (spin == 1 && nr < pr) {
-        dr = nr - pr + 360;
-    }
-    else {
-        dr = nr - pr;
+    else if (this._speed < 0) {
+    	if (spin == 1 && nr < pr) {
+        	dr = nr - pr + 360;
+	    }
+	    else if (spin == -1 && nr > pr) {
+	        dr = nr - pr - 360;
+	    }
+	    else {
+	        dr = nr - pr;
+	    }
     }
 
     // Getting Previous Frame Values 
@@ -1884,6 +1926,7 @@ function setSpriterData(data, name){
 //-------------------------------------------------------------------------------------------------------------     
 function createAnimationGlobal(data, name){
     obj2Arr(data);
+    console.log(data);
     $spriterAnimations[name] = data;
 }
 
