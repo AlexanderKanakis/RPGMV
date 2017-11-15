@@ -1030,6 +1030,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
             }
             else if (this._speed < 0) {
 
+
                 // Works Until Last Key
                 if (boneKey > 0){
                     boneNextFrame = this._pathTime[boneTime].key[boneKey - 1].time;
@@ -1043,10 +1044,11 @@ Spriter_Character.prototype.setCharacterSprite = function() {
 
                 // Works For Last Key
                 else if (boneKey == 0) {
+                    console.log(bonePrevFrame);
                     if (this._animationFrame == bonePrevFrame) {
                         this.boneKeyUpdate(n);
                     }
-                    else if (this._animationFrame < bonePrevFrame && this._repeat && eval(isAnimated)) {
+                    else if (this._animationFrame <= bonePrevFrame && this._repeat && eval(isAnimated)) {
                         this.boneMidKeyUpdate(n); 
                     }
                     else if (this._pathTime[boneTime].key.length == 1){
@@ -1368,30 +1370,17 @@ Spriter_Character.prototype.objectMidKeyUpdate = function(i) {
     nsy = Number(nsy);
 
     //Determining Spin
-    var spin = Number(key[time].spin) || 1;
+    var spin = this._speed > 0 ? (Number(key[time].spin) || 1) : -(Number(key[nextKey].spin) || 1);
     var dr;
 
-    if (this._speed > 0) {
-    	if (spin == -1 && nr > pr) {
-        	dr = nr - pr - 360;
-	    }
-	    else if (spin == 1 && nr < pr) {
-	        dr = nr - pr + 360;
-	    }
-	    else {
-	        dr = nr - pr;
-	    }
+    if (spin == -1 && nr > pr) {
+        dr = nr - pr - 360;
     }
-    else if (this._speed < 0) {
-    	if (spin == -1 && nr < pr) {
-        	dr = nr - pr + 360;
-	    }
-	    else if (spin == 1 && nr > pr) {
-	        dr = nr - pr - 360;
-	    }
-	    else {
-	        dr = nr - pr;
-	    }
+    else if (spin == 1 && nr < pr) {
+        dr = nr - pr + 360;
+    }
+    else {
+        dr = nr - pr;
     }
     
 
@@ -1533,29 +1522,17 @@ Spriter_Character.prototype.boneMidKeyUpdate = function(n) {
     nsy = Number(nsy);
 
     //Determining Spin
-    var spin = Number(key[time].spin) || 1;
+    var spin = this._speed > 0 ? (Number(key[time].spin) || 1) : -(Number(key[nextKey].spin) || 1);
     var dr;
-    if (this._speed > 0) {
-    	if (spin == -1 && nr > pr) {
-        	dr = nr - pr - 360;
-	    }
-	    else if (spin == 1 && nr < pr) {
-	        dr = nr - pr + 360;
-	    }
-	    else {
-	        dr = nr - pr;
-	    }
+
+    if (spin == -1 && nr > pr) {
+        dr = nr - pr - 360;
     }
-    else if (this._speed < 0) {
-    	if (spin == 1 && nr < pr) {
-        	dr = nr - pr + 360;
-	    }
-	    else if (spin == -1 && nr > pr) {
-	        dr = nr - pr - 360;
-	    }
-	    else {
-	        dr = nr - pr;
-	    }
+    else if (spin == 1 && nr < pr) {
+        dr = nr - pr + 360;
+    }
+    else {
+        dr = nr - pr;
     }
 
     // Getting Previous Frame Values 
@@ -1926,7 +1903,6 @@ function setSpriterData(data, name){
 //-------------------------------------------------------------------------------------------------------------     
 function createAnimationGlobal(data, name){
     obj2Arr(data);
-    console.log(data);
     $spriterAnimations[name] = data;
 }
 
