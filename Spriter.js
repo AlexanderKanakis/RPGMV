@@ -54,7 +54,8 @@
  *
  * Plugin Operation:
  * [1] Paste Spriter Pro save file in data/animations/. The file name will be the skeleton,
- * [2] Create a folder in img/character/Spriter/, named after the Skinset. 
+ * [2] Create a folder in img/character/Spriter/, named after the Skinset. The Skinset folder should have 4 folder which each taking the parts for each direction.
+ *     Example: Folder_1: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_2: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_3: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_4: [head,torso,r_arm,_r_leg,_l_arm,l_leg] 
  * [3] Inside the Skinset folder, create the folders with the bitmaps you used for the animation.
  * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors) you need to create them in the SpriterObjects.json file in your data folder.
  * [5] To create a Spriter Sprite for actors, go to Tools -> Database and write this on the actors' notes:
@@ -174,7 +175,7 @@
  * ----------------------------------------------------------------------------
  *
  * ----------------------------------------------------------------------------
- * To-do
+ * Future Updates/Fixes
  *
  * [1] Fix reverse animations (this._speed < 0).
  * [2] Utilize bezier lines for animation.
