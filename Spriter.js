@@ -2,7 +2,7 @@
 // Spriter Pro Plugin
 // by KanaX
 // version 1.0
-// Last Update: 2017.09.6
+// Last Update: 2018.01.24
 //=============================================================================
 
 /*:
@@ -15,73 +15,179 @@
  * @default 99
  * 
  * @param Show Skeleton
- * @desc Display the Animation Skeleton (true or false). Not very useful, just fun.
- * @default false
+ * @desc Display the Animation Skeleton (true or false).
+ * @default false 
+ *
+ * @param Show Frames
+ * @desc Display the Animation Frames (true or false).
+ * @default false 
  *
  * @help 
+ *
+ * Contact: 
+ * [1] forums.rpgmakerweb.com: KanaX
+ *
+ * Special Thanks to ivan.popelyshev (https://github.com/pixijs/pixi-display/tree/layers)
+ *
+ * Terms of Use:
+ * [1] Free for use in all projects.
+ * [2] Please provide credits to KanaX.
+ * [3] Feel free to let me know about your project, or any ideas regarding the plugin.
  *
  * Spriter Pro Plugin Instructions:
  *
  * Installation:
  * [1] Paste js file in js/plugins/
- * [2] Create path img/characters/Spriter/ and paste the 0 folder from the same path of the demo.
+ * [2] Create path img/characters/Spriter/ and inside Spriter, a folder named Single Bitmaps.
  * [3] Create file SpriterObjects.json in data/ or copy the one from the demo.
- * [4] Create path data/animations/ and paste the 0 file from the same path of the demo.
- * [5] Enable the plugin from the Plugin Maage and assging a number for the variable which stores animation info.
+ * [4] Create path data/animations/.
+ * [5] Enable the plugin from the Plugin Manager and assign a number for the variable which will store animation info.
  *     WARNING: Do not modify that variable after activating the plugin.
  * [6] Have some ramen noodles, because you deserve them.
  *
  * Regarding Spriter:
  * [1] The plugin should work as expected in most regards (please check "Future Updates/Fixes" for more information).
- * [2] The first 4 animations in your project will respond to the character's 4 directions. If you want your character
+ * [2] The first 4 animations in a Spriter project will respond to the character's 4 directions. If you want your character
  *     to move without Direction Fix, you have to create at least 4 animations.
- * [3] If something does not work on MV as it does on Spriter Pro, try selecting the key which causes the problem and press "key all" 
+ * [3] Spriter might face some problems with its documentation, so if something inexplicably does not work, try redoing the animation.
+ *     If that does not fix your problem, feel free to contact the plugin creator.
  *
  * Plugin Operation:
- * [1] Paste Spriter Pro save file in data/animations/. The file name will be the skeleton
- * [2] Create a folder named after the Skinset. 
+ * [1] Paste Spriter Pro save file in data/animations/. The file name will be the skeleton,
+ * [2] Create a folder in img/character/Spriter/, named after the Skinset. 
  * [3] Inside the Skinset folder, create the folders with the bitmaps you used for the animation.
- * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors)
- * [5] To create a Spriter Sprite for actors, go to Tools -> Dataase and write this on the actors' notes:
+ * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors) you need to create them in the SpriterObjects.json file in your data folder.
+ * [5] To create a Spriter Sprite for actors, go to Tools -> Database and write this on the actors' notes:
  *     <Spriter:>
  *     <_skeleton: The file name of the animation you want to choose from data/animations/>
  *     <_skin: The folder name of the Skinset you want to choose from img/characters/Spriter>
  *     <_speed: Speed of animation>
  *     <_cellX: Width of the area the main animation takes part in (example: the standard MV character cell width is 48)>
  *     <_cellY: Height of the area the main animation takes part in (example: the standard MV character cell height is 48)> 
+ *     <_spriteMask: Determine if the sprite will have a mask around it. If true, you need to fill the tags below>
+ *     <_spriteMaskX: X value of mask origin. 0, 0 is the top left corner of the cell>
+ *     <_spriteMaskY: Y value of mask origin. 0, 0 is the top left corner of the cell>
+ *     <_spriteMaskW: Width of the mask>
+ *     <_spriteMaskH: Height of the mask>
+ *
+ *     Example:
+ *     <Spriter:>
+ *     <_skeleton:female_running>
+ *     <_skin:female4>
+ *     <_speed:4>
+ *     <_cellX:48>
+ *     <_cellY:48> 
+ *     <_spriteMask:true>
+ *     <_spriteMaskX:0>
+ *     <_spriteMaskY:0>
+ *     <_spriteMaskW:48>
+ *     <_spriteMaskH:48>    
+ *
  * [6] To create a Spriter Sprite for an event create a comment in the active event page:
- *     <Spriter, skeleton, skinset, speed, cellX, cellY>
+ *     <Spriter, skeleton, skinset, speed, cellX, cellY, false>
+ *     or
+ *     <Spriter, skeleton, skinset, speed, cellX, cellY, true, maskX, maskY, maskW, maskH> 
  *  
+ *     Example
+ *     <Spriter, doggo, sheperd, 10, 48, 32, true, 0, 0, 48, 32>
+ *
+ * WARNING: 01/24/2018 THERE IS A PIXI.JS BUG IN v4.5.4 THAT MAKES MASKS NOT WORK IF THE MAP HAS TILES. 
+ *
+ * [7] Animations play when 1) an actor/event has walking animation on and is moving, or 2) an actor/event has stepping animation on.
+ *
  * Plugin Commands:
- * [1] eventSkeleton
- * [2] eventSkin
- * [3] eventStop
- * [4] eventRecovery
- * [5] eventSkinPart
- * [6] eventChildSprite
- * [7] eventRemoveChildSprite
- * [8] playerSkeleton
- * [9] playerSkin
- * [10] playerStop
- * [11] playerRecovery
- * [12] playerSkinPart
- * [13] playerChildSprite
- * [14] playerRemoveChildSprite
+ * [1] eventSkeleton eventId data/animations/skeleton Spriter/skinsetName                                     (Changes skeleton. Since skeleton changes, skinset needs to change as well.)
+ *     Example: eventSkeleton 1 waving_hello male_1
  *
+ * [2] eventSkin eventId Spriter/skinsetName                                                                  (Changes Skinset. Needs to be compatible with skeleton.)
+ *     Example: eventSkin 1 male_2
  *
+ * [3] eventStop eventId true/false                                                                           (Stops Animation.)
+ *     Example: eventStop 1 true
+
+ * [4] eventRecovery eventId ("snap"/"freeze")                                                                (Snap resets animation when movement stops. Freeze pauses animation.)
+ *     Example: eventRecovery 1 freeze
+
+ * [5] eventSkinPart eventId imageName (Spriter/skinsetName)-or-(bitmap name from Single bitmaps) fullsprite? (Changes only a single image from that skinset to another, compatible one.)
+ *                                                                                                            (fullsprite is set to true or false and determines if the new bitmap will be from a full spriteset or not)
+ *                                                                                                            (if it is set to true then the user will have to use the desired spriteset path)
+ *                                                                                                            (if it is set to false then the user will have to use the desired bitmap path from within the Single Bitmaps folder)
+ *     Example1: eventSkinPart 1 hat Items/helmet true                                                        (helmet needs to be a folder with the same filename/location as the one of the previous bitmap)
+ *     Example2: eventSkinPart 1 r_hand_weapon mace false                                                     (mace needs to be a bitmap inside the Single Bitmaps folder)
  *
+ * [6] eventRemoveSkinPart eventId imageName                                                                  (Removes Spriter/skinsetName bitmap from imageName)
+ *     Example: eventRemoveSkinPart 1 r_hand_weapon 
  *
+ * [7] eventChildSprite eventId imageName objectName                                                          (Assigns a sprite from data/SpriterObjects.json to imageName)
+ *     Example: eventChildSpriter 1 r_hand_weapon glowing_mace                                                (glowing_mace needs to be an object in SpriterObjects)
  *
+ * [8] eventRemoveChildSprite eventId imageName objectName                                                    (Remove sprite object)
+ *     Example: eventChildSpriter 1 r_hand_weapon glowing_mace
+ *
+ * -----------------------------------------------------------------------------
+ * [9] playerSkeleton data/animations/skeleton Spriter/skinsetName
+ * [10] playerSkin Spriter/skinsetName
+ * [11] playerStop true/false
+ * [12] playerRecovery ("snap"/"freeze")
+ * [13] playerSkinPart imageName Spriter/skinsetName
+ * [14] playerRemoveSkinPart imageName 
+ * [15] playerChildSprite imageName objectName
+ * [16] playerRemoveChildSprite imageName objectName
+ * -----------------------------------------------------------------------------
+ * [17] followerSkeleton followerId data/animations/skeleton Spriter/skinsetName
+ * [18] followerSkin followerId Spriter/skinsetName
+ * [19] followerStop followerId true/false
+ * [20] followerRecovery followerId ("snap"/"freeze")
+ * [21] followerSkinPart  followerId imageName Spriter/skinsetName
+ * [22] followerRemoveSkinPart  followerId imageName 
+ * [23] followerChildSprite followerId imageName objectName
+ * [24] followerRemoveChildSprite followerId imageName objectName
+ *
+ * Script Calls:
+ * [1] $gameMap._events[1].resetAnimation = true;                                                              (Resets animation)
+ * [2] $gamePlayer.resetAnimation = true;
+ * [3] $gamePlayer.followers()[1].resetAnimation = true;
+ * [4] $gameMap._events[1].hasActiveTag("tagName");                                                            (Checks if character has an active tag for this frame)
+ * [5] $gameMap._events[1]._spriter.var.variableName                                                           (Returns value for variableName for this Frame)
+ *
+ * Tag Commands:                                                                                               (Place tags with the following labels for special effects)
+ * [1] se,seName,pan,pitch,volume,fade(, areaOfMaxVolume, areaOfTotalFade)                                     (Plays SE sound. If fade is true, the sound fades away the further the player is from the source)
+ *     Example1: se,step,0,100,60,true,3,10
+ *     Example2: se,clock,0,80,100,false
+ *
+ * [2] SkinPart,imageName,(Spriter/skinsetName)-or-(bitmap name from Single bitmaps),fullsprite?               (Works exactly like the plugin command. Useful for automatically spawning sprites with certain skinParts. Not so useful if those sprites change parts often.)
+ *     Example1: SkinPart,hat,stink_lines,false
+ *     Example2: SkinPart,torso,Items/tuxedo,true
+ *
+ * [3] RemoveSkinPart,imageName,(Spriter/skinsetName)-or-(bitmap name from Single bitmaps),fullsprite?
+ *     Example: RemoveSkinPart,hat,stink_lines,false
+ *
+ * [4] ChildSprite,imageName,objectName                                                                        (Works exactly like the plugin command.Useful for automatically spawning sprites with certain childSprites. Not so useful if those sprites change children often.)
+ *     Example: ChildSprite,r_hand_tool,twinking_axe
+ *
+ * [5] RemoveChildSprite,imageName,objectName
+ *     Example: ChildSprite,r_hand_tool,twinking_axe
  *
  * ----------------------------------------------------------------------------
  * Revisions
  *
  * ----------------------------------------------------------------------------
  *
+ * ----------------------------------------------------------------------------
+ * To-do
+ *
+ * [1] Fix reverse animations (this._speed < 0).
+ * [2] Utilize bezier lines for animation.
+ * [3] Make functional masks after dealing with a pixi.js bug. 
+ *
+ * ----------------------------------------------------------------------------
+ *
+ *
  */
   var parameters = $plugins.filter(function(p) { return p.description.contains('<Spriter>'); })[0].parameters;
   var spriterVarId = parseInt(parameters['Storing Variable'] || 7);
   var showSkeleton = eval(parameters['Show Skeleton'] || false);
+  var showFrames = eval(parameters['Show Frames'] || false);
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -93,8 +199,8 @@ var spriter_alias_Game_CharacterBase_initmembers = Game_CharacterBase.prototype.
 Game_CharacterBase.prototype.initMembers = function() {
     spriter_alias_Game_CharacterBase_initmembers.call(this);
     this._spriter = {};
-    this._spriter._skeleton = '0';
-    this._spriter._skin = '0';
+    this._spriter._skeleton = null;
+    this._spriter._skin = null;
     this._spriter._skinParts = [];
     this._spriter._spriteChildren = [];
     this._spriter._speed = 1;
@@ -103,8 +209,12 @@ Game_CharacterBase.prototype.initMembers = function() {
     this._spriter._recovery = "snap";
     this._spriter.tag = [];
     this._spriter.var = {};
+    this._spriter._spriteMask = {};
 };
 
+//-------------------------------------------------------------------------------------------------------------
+// Global Variables are used to return Sprites to their previous state before exiting their respective scene.
+//-------------------------------------------------------------------------------------------------------------
 Game_CharacterBase.prototype.initGlobalVars = function () {
 
     if (!$gameVariables._data[spriterVarId]) {
@@ -137,7 +247,9 @@ Game_CharacterBase.prototype.initGlobalVars = function () {
     }
 };
 
+//-------------------------------------------------------------------------------------------------------------
 // Give values to properies from meta or stored global values.
+//-------------------------------------------------------------------------------------------------------------
 Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visible) {
 	var notes;
 
@@ -156,16 +268,30 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
     	notes._speed = param[2];
     	notes._cellX = param[3];
     	notes._cellY = param[4];
+    	notes._spriteMask = param[5];
+    	if (notes._spriteMask == "true") {
+    		notes._spriteMaskX = param[6];
+    		notes._spriteMaskY = param[7];
+    		notes._spriteMaskW = param[8];
+    		notes._spriteMaskH = param[9];
+    	}
 	}
     var globalInfo = this.getCharacterGlobalInfo(character);
-    character._spriter._skeleton = visible ? globalInfo._skeleton|| notes._skeleton : '0';
-    character._spriter._skin = visible ? globalInfo._skin || notes._skin : '0';
+    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton : null;
+    character._spriter._skin = visible ? globalInfo._skin || notes._skin : null;
     character._spriter._skinParts = globalInfo._skinParts || [];
     character._spriter._spriteChildren = globalInfo._spriteChildren || [];
     character._spriter._speed = globalInfo._speed || notes._speed;
     character._spriter._cellX = notes._cellX;
     character._spriter._cellY = notes._cellY;
     character._spriter._stop = globalInfo._stop || false;
+    character._spriter._spriteMask.available = eval(notes._spriteMask);
+    if (character._spriter._spriteMask.available) {
+    	character._spriter._spriteMask.x = notes._spriteMaskX;
+    	character._spriter._spriteMask.y = notes._spriteMaskY;
+    	character._spriter._spriteMask.w = notes._spriteMaskW;
+    	character._spriter._spriteMask.h = notes._spriteMaskH;
+    }
 };
 
 Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
@@ -180,15 +306,18 @@ Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
         spriterVar = variable.followers["follower_" + character._memberIndex];
     }
     else if (character.constructor === Game_Event) {
-        spriterVar = this.initLocalVar(character);
+        spriterVar = this.initGlobalVarsForMap(character);
     }   
     else {
-        spriterVar = this.initLocalVar(character);
+        spriterVar = this.initGlobalVarsForMap(character);
     }
     return spriterVar;
 };
 
-Game_CharacterBase.prototype.initLocalVar = function (character) {
+//-------------------------------------------------------------------------------------------------------------
+// For Events and Children Sprites, which are constrained to a Map.
+//-------------------------------------------------------------------------------------------------------------
+Game_CharacterBase.prototype.initGlobalVarsForMap = function (character) {
 	var spriterVar;
 	var variable = $gameVariables._data[spriterVarId];
 	var variableMap = variable.maps["map_" + String($gameMap._mapId)];
@@ -211,7 +340,6 @@ Game_CharacterBase.prototype.initLocalVar = function (character) {
     }
     return spriterVar;	
 };
-
 
 //-------------------------------------------------------------------------------------------------------------
 // Refreshes additional Spriter properties
@@ -252,6 +380,9 @@ Game_Event.prototype.refresh = function() {
 	}
 };
 
+//-------------------------------------------------------------------------------------------------------------
+// When a new Actor is added, they are checked for Spriter Sprite
+//-------------------------------------------------------------------------------------------------------------
 var spriter_alias_Game_Party_addActor = Game_Party.prototype.addActor;
 Game_Party.prototype.addActor = function(actorId) {
     spriter_alias_Game_Party_addActor.call(this, actorId);
@@ -298,26 +429,30 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
     for (var j = 0; j < this._spriterCharacterSprites.length; j++) {
         this._tilemap.addChild(this._spriterCharacterSprites[j]);
     }
-    $gameVariables._data[spriterVarId]._spriterCharacterSprites = this._spriterCharacterSprites;
+    if ($gameVariables._data[spriterVarId]) {
+    	$gameVariables._data[spriterVarId]._spriterCharacterSprites = this._spriterCharacterSprites;
+    }
 };
 
 Spriteset_Map.prototype.createGlobalSpriterCharacters = function () {
-    this._childSprites = [];
-	var playerChildren = $gameVariables._data[spriterVarId].player._children; 
-    var followerChildren = $gameVariables._data[spriterVarId].followers._children; 
-	var eventChildren = $gameVariables._data[spriterVarId].maps['map_' + $gameMap._mapId]._children; 
-   	for (var i = 0; i < playerChildren.length; i++) {
-   		this.setChildAnimationInfo(playerChildren[i]);
-   		this._childSprites.push(new Spriter_Character(playerChildren[i]));
-   	}
-   	for (var j = 0; j < eventChildren.length; j++) {
-   		this.setChildAnimationInfo(eventChildren[j]);
-   		this._childSprites.push(new Spriter_Character(eventChildren[j]));
-   	}
-    for (var k = 0; k < followerChildren.length; k++) {
-        this.setChildAnimationInfo(followerChildren[k]);
-        this._childSprites.push(new Spriter_Character(followerChildren[k]));
-    }
+    if ($gameVariables._data[spriterVarId]) {
+	    this._childSprites = [];
+		var playerChildren = $gameVariables._data[spriterVarId].player._children; 
+	    var followerChildren = $gameVariables._data[spriterVarId].followers._children; 
+		var eventChildren = $gameVariables._data[spriterVarId].maps['map_' + $gameMap._mapId]._children; 
+	   	for (var i = 0; i < playerChildren.length; i++) {
+	   		this.setChildAnimationInfo(playerChildren[i]);
+	   		this._childSprites.push(new Spriter_Character(playerChildren[i]));
+	   	}
+	   	for (var j = 0; j < eventChildren.length; j++) {
+	   		this.setChildAnimationInfo(eventChildren[j]);
+	   		this._childSprites.push(new Spriter_Character(eventChildren[j]));
+	   	}
+	    for (var k = 0; k < followerChildren.length; k++) {
+	        this.setChildAnimationInfo(followerChildren[k]);
+	        this._childSprites.push(new Spriter_Character(followerChildren[k]));
+	    }
+	}
 };
 
 
@@ -343,10 +478,15 @@ Spriteset_Map.prototype.setChildAnimationInfo = function(child) {
 var spriter_alias_Spriteset_Map_update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function() {
 	spriter_alias_Spriteset_Map_update.call(this);
-	this.updateChildren();
-	this.updateFollowers();
+	if ($gameVariables._data[spriterVarId]) {
+		this.updateChildren();
+		this.updateFollowers();
+	}
 };
 
+// Checks Global Variable for Sprite Requests from Plugin Commands.
+// The Spriter object that matches the name in the request is pulled from SpriterObject.JSON
+// And used for a new Sprite.
 Spriteset_Map.prototype.updateChildren = function() {
 	var spriteRequests = $gameVariables._data[spriterVarId]._spriteRequests;
 	for (var i = 0; i < spriteRequests.length; i++) {
@@ -394,17 +534,18 @@ Spriteset_Map.prototype.updateFollowers = function() {
 //-------------------------------------------------------------------------------------------------------------
 // Checks Character For Spriter Comment/Note 
 //-------------------------------------------------------------------------------------------------------------
-
 Spriteset_Map.prototype.hasSpriterSprite = function (character) {
 	if (character.constructor === Game_Event) {
-		var commandList = character.page(character._pageIndex).list;	
-		for (var i = 0; i < commandList.length; i++) {
-	    	if (commandList[i].code == 108){
-	        	if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
-					return true;
-	        	}
-	        }
-	    }
+        if (character._pageIndex !== -1) {
+            var commandList = character.page(character._pageIndex).list;    
+            for (var i = 0; i < commandList.length; i++) {
+                if (commandList[i].code == 108){
+                    if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
+                        return true;
+                    }
+                }
+            }
+        }
 	}
 	else if (character.constructor === Game_Follower) {
 		var followerId = character.actor()._actorId;
@@ -413,7 +554,6 @@ Spriteset_Map.prototype.hasSpriterSprite = function (character) {
             return true;
         }
 	}
-    
 	return false;
 };
 
@@ -447,7 +587,7 @@ Spriter_Character.prototype.initMembers = function() {
     this.anchor.x = 0.5;
     this.anchor.y = 1;
     this._character = null;
-    this._animationId = 2;
+    this._animationId = 0;
     this._balloonDuration = 0;
     this._tilesetId = 0;
     this._animation = null;
@@ -458,17 +598,18 @@ Spriter_Character.prototype.initMembers = function() {
     this._sprite = null;
     this._skin = null;
     this._skinParts = [];
-    this._spriteChildren = '0';
-    this._skeleton = '0';
+    this._spriteChildren = null;
+    this._skeleton = null;
     this._speed = 1;
     this._cellX = null;
     this._cellY = null;
-    this._maskX = null;
-    this._maskY = null;
+    this._spriteMaskX = null;
+    this._spriteMaskY = null;
     this._repeat = false;
     this._resetter = false;
     this._recovery = "snap";
     this._globalAnimationInfo = null;
+    this._spriteMask = {};
 };
 
 Spriter_Character.prototype.setCharacter = function(character) {
@@ -480,11 +621,19 @@ Spriter_Character.prototype.setCharacter = function(character) {
     this._skin = this._character._spriter._skin;
     this._skinParts = this._character._spriter._skinParts;
     this._spriteChildren = this._character._spriter._spriteChildren;
-    this._cellX = this._character._spriter._cellX;
-    this._cellY = this._character._spriter._cellY;
+    this._cellX = Number(this._character._spriter._cellX);
+    this._cellY = Number(this._character._spriter._cellY);
     this._speed = Number(this._character._spriter._speed);
     this._recovery = this._character._spriter._recovery;
     this._stop = this._character._spriter._stop;
+    this._spriteMask.available = this._character._spriter._spriteMask.available;
+    if (this._spriteMask.available) {
+    	this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
+		this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
+		this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
+		this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
+    }
+
 
     //Getting Globals
     if (this._character.constructor === Game_Player) { 
@@ -518,8 +667,24 @@ Spriter_Character.prototype.setCharacter = function(character) {
     if (!this._globalAnimationInfo.hasOwnProperty("var")) {    
         this._globalAnimationInfo.var = {};
     }
-    this._animationFrame = this._globalAnimationInfo.frame || 0;
-    this._key = this._globalAnimationInfo.key || 0;
+    if (this._character._direction == this._globalAnimationInfo.dir) {
+        console.log("in");
+        this._animationFrame = this._globalAnimationInfo.frame || 0;
+        this._key = this._globalAnimationInfo.key || 0;        
+    }
+    else {
+        this._animationFrame = 0;
+        this._key = 0;
+    }
+};
+
+//-------------------------------------------------------------------------------------------------------------
+// Get animation from $spriterAnimations
+//-------------------------------------------------------------------------------------------------------------
+
+Spriter_Character.prototype.getAnimation = function(name) {
+    var property = name + ".scml";
+    this._animation = $spriterAnimations[property];
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -533,8 +698,8 @@ Spriter_Character.prototype.initSprite = function() {
     this.addChild(this._sprite);
     this._sprite.addChild(this._layer);
     this._layer.group.enableSort = true;
-    this._object = [];
-    this._bone = [];
+    this._element = [];
+    this._animLength = Number(this._animation.entity.animation[this._animationId].length);
     this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
     this._repeat = eval(this._repeat);
 
@@ -542,36 +707,48 @@ Spriter_Character.prototype.initSprite = function() {
 
     // Creating All Objects and Bones in the Timeline
     for (var i = 0; i < this._pathTime.length; i++) {
-        if (!this._pathTime[i].hasOwnProperty('obj')){
-            this._object[i-j] = new Sprite();
-            this._object[i-j].parent = null;
-            this._object[i-j].removeChildren();
-            this._object[i-j].parentGroup = this._group;
+        if (this._pathTime[i].object_type == "bone"){
+            this._element[i] = new Sprite();
+            this._element[i].parent = null;
         }
         else {
-            this._bone[j] = new Sprite();
-            this._bone[j].parent = null;
-            j++;
+            this._element[i] = new Sprite();
+            this._element[i].parent = null;
+            this._element[i].removeChildren();
+            this._element[i].parentGroup = this._group;
         }
     }
 
-    /*
-    var myMask = new PIXI.Graphics();
-	myMask.beginFill();
-	myMask.drawRect(-16, -48, 32, 48);
-	myMask.endFill();
-	this.addChild(myMask);
-	this._sprite.mask = myMask;
-	*/
+    // Info Sprite
+    this._infoDisplaySprite = new Sprite();
+    this.addChild(this._infoDisplaySprite);
+    bitmapH = this._cellY;
+    this._infoDisplaySprite.bitmap = new Bitmap(200, bitmapH);
+    this._infoDisplaySprite.bitmap.fontSize = 10;
+    this._infoDisplaySprite.y = - bitmapH - 35;
+    this._infoDisplaySprite.x = -25;
+
+    // Sprite Mask
+    if (this._spriteMask.available) {
+        var x = this._spriteMask.x;
+        var y = this._spriteMask.y;
+        var w = this._spriteMask.w;
+        var h = this._spriteMask.h;
+        var myMask = new PIXI.Graphics();
+        myMask.beginFill();
+        myMask.drawRect(-this._cellX/2 + 2 + x, -this._cellY + 2 + y, w + 2, h + 2);
+        myMask.endFill();
+        this.addChild(myMask);
+        this.mask = myMask;
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Get animation from $spriterAnimations
+// Moves Sprite from 0,0 point to -width/2,-height point. 
 //-------------------------------------------------------------------------------------------------------------
-
-Spriter_Character.prototype.getAnimation = function(name) {
-    var property = name + ".scml";
-    this._animation = $spriterAnimations[property];
+Spriter_Character.prototype.displaceSprite = function() {
+    this._sprite.x = -this._cellX/2;
+    this._sprite.y = -this._cellY;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -584,13 +761,9 @@ Spriter_Character.prototype.start = function() {
 
 Spriter_Character.prototype.setInitialCharacter = function() {
 
+	var item;
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
-
-    // Correcting Key
-    if (this._key == this._pathMain.length) {
-        this._key--;
-    }
 
     // Set Bones
     if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
@@ -603,137 +776,105 @@ Spriter_Character.prototype.setInitialCharacter = function() {
 
         // Setting Bone Values
         for (var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
-            this.setInitialBones(n);
+        	id = Number(this._pathMain[this._key].bone_ref[n].timeline);
+        	item = this._element[id];
+        	item.timelineId = id;
+        	item.key = Number(this._pathMain[this._key].bone_ref[n].key); // Id of bone key for this._key
+            item.currentKey = this._pathTime[item.timelineId].key[item.key];
+            item.type = "bone";
+            this.setInitialElements(n, item);
         }
     }
 
     if (this._pathMain[this._key].hasOwnProperty('object_ref')) {
 
-        // Set Object and Bitmap
-
         //Going through all Objects for Current Key
         for (var i = 0; i < this._pathMain[this._key].object_ref.length; i++){
-           this.setInitialObjects(i);
+        	id = Number(this._pathMain[this._key].object_ref[i].timeline);
+        	item = this._element[id];
+        	item.timelineId = id;
+        	item.key = Number(this._pathMain[this._key].object_ref[i].key); // Id of bone key for this._key
+            item.currentKey = this._pathTime[item.timelineId].key[item.key];
+            item.type = "object";
+        	this.setInitialElements(i, item);
+
         }
     }
 };
 
-Spriter_Character.prototype.setInitialObjects = function(i) {
-
-    // Set Inheritance
-    if (this._object[i].parent !== null) {
-        this._object[i].parent.removeChild(this._object[i]);
-    }
-    if (this._pathMain[this._key].object_ref[i].hasOwnProperty('parent')) {
-         this._bone[this._pathMain[this._key].object_ref[i].parent].addChild(this._object[i]);
-    } 
-    else {
-        if (this._object[i].parent !== this._sprite || this._object[i].parent === null) {
-            this._sprite.addChild(this._object[i]);
-        }
-    }
-
-    // Get Global Values
-    var globals = this._globalAnimationInfo;
-    if (!globals.objects.hasOwnProperty("object_" + String(i))) {
-        globals.objects["object_" + String(i)] = {};
-    }
-    var objectGlobal = globals.objects["object_" + String(i)];
-
-    // Get Object Key ID
-    var time = Number(this._pathMain[this._key].object_ref[i].key);   
-
-    // Set Object Bitmap
-
-    var object = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].key[time].object;
-
-
-    var folderId = Number(object.folder);
-    var fileId = Number(object.file);
-    var timelineName = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].name.replace(/\_(\d){3}/, '');
-    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
-    fileName = fileName.replace(".png", '');
-    var skin = this._skin;
-    var skinParts = this._skinParts;
-    var spriteChanges = this._spriteChildren;
-
-    for (var j = 0; j < skinParts.length; j++){
-        if (skinParts[j].skinName == timelineName) {
-            skin = skinParts[j].skinSet;
-            break;
-        }
-    }
-    if (this._object[i]._fileName !== fileName || this._object[i]._skin !== skin) {
-        this._object[i].bitmap = ImageManager.loadCharacter("Spriter/"+ skin + "/" + fileName);
-        this._object[i]._fileName = fileName;
-        this._object[i]._skin = skin;
-    }
-
-    // Set Object Values
-    var w = Number(this._animation.folder[folderId].file[fileId].width);
-    var h = Number(this._animation.folder[folderId].file[fileId].height);
-    var ox = Number(object.x) || 0;
-    var oy = Number(object.y) || 0;
-    var or = Number(object.angle) || 0;
-    var oax = Number(object.pivot_x) || 0;
-    var oay = 1 - Number(object.pivot_y) || 0;
-    var oa = object.a || 1;
-    oa = Number(oa);
-    var osx = object.scale_x || 1;
-    osx = Number(osx);
-    var osy = object.scale_y || 1;
-    osy = Number(osy);
-    var z = Number(this._pathMain[this._key].object_ref[i].z_index);
-    var x = objectGlobal.x || ox; 
-    var y = objectGlobal.y || -oy; 
-
-    this._object[i].move(x, y);
-    this._object[i].alpha = objectGlobal.a || oa;
-    this._object[i].rotation = objectGlobal.r || ((-or) * Math.PI / 180);
-    this._object[i].anchor.x = objectGlobal.ax || oax;
-    this._object[i].anchor.y = objectGlobal.ay || oay;
-    this._object[i].scale.x = objectGlobal.sx || osx;
-    this._object[i].scale.y = objectGlobal.sy || osy;
-    this._object[i].zIndex = objectGlobal.z || z;
-
-    // Set Inherited Sprite
-    this.controlChildSprites(i, w, h);
-
-};
-
-Spriter_Character.prototype.setInitialBones = function(n) {
+Spriter_Character.prototype.setInitialElements = function(n, item) {
 
     var globals = this._globalAnimationInfo;
-    if (!globals.bones.hasOwnProperty("bone_" + String(n))) {
-        globals.bones["bone_" + String(n)] = {};
+    var elementGlobal;
+    var w;
+    var h;
+    var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
+    var folderId = Number(element.folder);
+	var fileId = Number(element.file);
+
+    if (item.type === "object") {
+
+    	// Reset Inheritance
+	    if (!globals.objects.hasOwnProperty("object_" + Number(item.timelineId))) {
+        	globals.objects["object_" + Number(item.timelineId)] = {};
+    	}
+    	elementGlobal = globals.objects["object_" + Number(item.timelineId)];
+		
+		// Set Inheritance
+	    if (this._pathMain[this._key].object_ref[n].hasOwnProperty('parent')) {
+	    	parentMainId = this._pathMain[this._key].object_ref[n].parent;
+	    	parentTimeId = this.pathTimeId("bone", parentMainId);
+	        this._element[parentTimeId].addChild(item);
+	    } 
+	    else {
+            this._sprite.addChild(item);
+	        
+	    }
+
+	    w = Number(this._animation.folder[folderId].file[fileId].width);
+	    h = Number(this._animation.folder[folderId].file[fileId].height);
+
+	}
+	else {
+	    if (!globals.bones.hasOwnProperty("bone_" + Number(item.timelineId))) {
+	        globals.bones["bone_" + Number(item.timelineId)] = {};
+	    }
+	    elementGlobal = globals.bones["bone_" + Number(item.timelineId)];
+	}
+
+    var ex = Number(element.x) || 0;
+    var ey = Number(element.y) || 0;
+    var er = Number(element.angle) || 0;
+    var esx = element.scale_x || 1;
+    esx = Number(esx);
+    var esy = element.scale_y || 1;
+    esy = Number(esy);
+    var x = elementGlobal.x || ex;
+    var y = elementGlobal.y || -ey;
+    item.move(x, y);
+    item.rotation = elementGlobal.r || -er * Math.PI / 180;
+    item.scale.x = elementGlobal.sx || esx;
+    item.scale.y = elementGlobal.sy || esy;
+
+    if (item.type === "object") {
+
+	    var eax = Number(element.pivot_x) || 0;
+	    var eay = 1 - Number(element.pivot_y) || 0;
+	    var ea = element.a || 1;
+	    ea = Number(ea);
+	    var z = Number(this._pathMain[this._key].object_ref[n].z_index);
+
+    	item.alpha = elementGlobal.a || ea;
+		item.anchor.x = elementGlobal.ex || eax;
+	    item.anchor.y = elementGlobal.ey || eay;		
+		item.zIndex = elementGlobal.z || z;
+
+	   	this.updateBitmaps(item);
+
+		// Set Inherited Sprite
+        
+    	this.controlChildSprites(item.timelineId, w, h);
     }
-
-    if (showSkeleton) {
-        var boneId = Number(this._pathTime[this._pathMain[this._key].bone_ref[n].timeline].obj);
-        var w = Number(this._animation.entity.obj_info[boneId].w);
-        var h = 4;
-        this._bone[n].bitmap = new Bitmap(w, h);
-        this._bone[n].bitmap.fillAll('black');
-        this._bone[n].bitmap.fillRect(1,1, w-2, h-2, 'white');
-    }
-
-    var boneGlobal = globals.bones["bone_" + String(n)];
-
-    var time = Number(this._pathMain[this._key].bone_ref[n].key);
-    var bone = this._pathTime[this._pathMain[this._key].bone_ref[n].timeline].key[time].bone;    
-    var bx = Number(bone.x) || 0;
-    var by = Number(bone.y) || 0;
-    var br = Number(bone.angle) || 0;
-    var bsx = bone.scale_x || 1;
-    bsx = Number(bsx);
-    var bsy = bone.scale_y || 1;
-    bsy = Number(bsy);
-    var x = boneGlobal.x || bx;
-    var y = boneGlobal.y || -by;
-    this._bone[n].move(x, y);
-    this._bone[n].rotation = boneGlobal.r || -br * Math.PI / 180;
-    this._bone[n].scale.x = boneGlobal.sx || bsx;
-    this._bone[n].scale.y = boneGlobal.sy || bsy;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -745,6 +886,14 @@ Spriter_Character.prototype.update = function() {
     this.updateSprite();
     this.updatePosition();
     this.updateOther();
+};
+
+Spriter_Character.prototype.updateDisplay = function() {
+    if (showFrames) {
+        this._infoDisplaySprite.bitmap.clear();
+        this._infoDisplaySprite.bitmap.drawText("key: " + this._key, 0, 10, 100, 1, 'left');
+        this._infoDisplaySprite.bitmap.drawText("frame: " + String(this._animationFrame), 0, 25, 100, 1, 'left');
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -769,8 +918,10 @@ Spriter_Character.prototype.updateDirection = function() {
         delete this._group;
         this.initSprite();
         this.displaceSprite();
+        this._animLength = Number(this._animation.entity.animation[this._animationId].length);
         this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
-        this._repeat = eval(this._repeat);             
+        this._repeat = eval(this._repeat);  
+        this.updateDisplay();           
     }
 };
 
@@ -781,33 +932,44 @@ Spriter_Character.prototype.updateDirection = function() {
 Spriter_Character.prototype.updateSprite = function() {
     if (!this._stop) {
     	this.checkChanges();
-        this.updateAnimationKey();
         this.setCharacterSprite();
         this.updateTagsAndVars();
         if (this.isMoving(this._character)) {
             this._resetter = false;
             this.updateFrame();
         }
+
+        // Snap Recovery resets animation when movement stops.
         else if (this._recovery == "snap") {
-            // this._resetter resets the animation if !this._character.isMoving() for more that one update loop.
+
             // Character movement stops after the completion of a step
+            // this._resetter resets the animation if !this._character.isMoving() for more that one update loop.
             if (this._resetter === true) {
                 this._key = 0;
                 this._animationFrame = 0;
                 this._globalAnimationInfo.frame = 0;
                 this._globalAnimationInfo.key = 0;
+        		this.updateDisplay();
             }
             else {
                 this._resetter = true;
             }
         }
-        else if (this._recovery == "freeze") {
-        }
-        else if (this._recovery == "smooth") {
-        }
     }
     else {
         this.checkChanges();	
+    }
+    this.checkReset();
+};
+
+Spriter_Character.prototype.checkReset = function() {
+    if (this._character.resetAnimation) {
+        this._key = 0;
+        this._animationFrame = 0;
+        this._globalAnimationInfo.key = this._key; 
+        this._globalAnimationInfo.frame = this._animationFrame;
+        this.updateDisplay();
+        this._character.resetAnimation = false;
     }
 };
 
@@ -836,10 +998,12 @@ Spriter_Character.prototype.checkChanges = function() {
         delete this._layer;
         delete this._group;
         this.initSprite();
-        this.displaceSprite();
         this.start();
+        this.displaceSprite();
+        this._animLength = Number(this._animation.entity.animation[this._animationId].length);
         this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
         this._repeat = eval(this._repeat);   
+        this.updateDisplay();
     }
     if (this._skin !== this._character._spriter._skin) {
         this._skin = this._character._spriter._skin;
@@ -851,15 +1015,16 @@ Spriter_Character.prototype.checkChanges = function() {
         this._spriteChildren = this._character._spriter._spriteChildren;
     }
     if (this._cellX !== this._character._spriter._cellX) {
-        this._cellX = this._character._spriter._cellX;
+        this._cellX = Number(this._character._spriter._cellX);
         this.displaceSprite();
     }
     if (this._cellY !== this._character._spriter._cellY) {
-        this._cellY = this._character._spriter._cellY;
+        this._cellY = Number(this._character._spriter._cellY);
         this.displaceSprite();
     }
-    if (this._speed !== this._character._spriter._speed) {
-        this._speed = this._character._spriter._speed;
+    if (this._speed !== Number(this._character._spriter._speed)) {
+        this.fixKeys();
+        this._speed = Number(this._character._spriter._speed);
         this.updateFrame();
     }
     if (this._recovery !== this._character._spriter._recovery) {
@@ -871,35 +1036,40 @@ Spriter_Character.prototype.checkChanges = function() {
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Update this._key according to this._animationFrame
+// When this._speed changes sign, this._key is changed.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.updateAnimationKey = function() {
-    this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
-    var animLength = Number(this._animation.entity.animation[this._animationId].length);
-    for (var i = 0; i < this._pathMain.length; i++){
-        if (this._animationFrame == this._pathMain[i].time){
-            this._key = i;
-            this._globalAnimationInfo.key = this._key; 
-            break;
-        }
-    }
-    if (this._animationFrame == animLength && this._speed > 0) {
-        this._key = this._pathMain.length - 1; 
-        this._globalAnimationInfo.key = this._key; 
-    }
-    else if (this._pathMain.length > 1 && this._animationFrame < Number(this._pathMain[1].time) && this._speed < 0) {
-	    this._key = 0;
-    }
+Spriter_Character.prototype.fixKeys = function () {
+	if (this._speed < 0 && Number(this._character._spriter._speed) > 0) {
+		if (this._key === 0 && this._repeat) {
+			this._key = this._pathMain.length - 1;
+		}
+		else if (this._key === 0 && !this._repeat) {
+		}
+		else {
+			this._key--;
+		}
+	}
+	else if (this._speed > 0 && Number(this._character._spriter._speed) < 0) {
+		if (this._key == this._pathMain.length - 1 && this._repeat) {
+			this._key = 0;
+		}
+		else if (this._key == this._pathMain.length - 1 && !this._repeat) {
+		}
+		else {
+			this._key++;
+		}
+	}
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Updates frame. If mid key the frame increases by this._speed. If at key, the frame takes the key time.
-// If animation is over, frame does not change or it resets to 0
+// If animation is over, frame does not change or it resets to 0 according to this._repeat.
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.updateFrame = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
-    var animLength =  Number(this._animation.entity.animation[this._animationId].length);
-    var speed = Number(this._speed);
+    var speed = this._speed;
+    var nextKeyTime;
+    var lastKeyTime = Number(this._pathMain[this._pathMain.length - 1].time);
 
     // Animation Going Forwards
     if (speed > 0) {
@@ -907,9 +1077,12 @@ Spriter_Character.prototype.updateFrame = function() {
         // Works Until Last Key
         if (this._key < this._pathMain.length - 1) {
 
-            // If animationFrame is bigger that next Key Frame, then  animationFrame = next Key Frame
-            if (this._animationFrame + speed > this._pathMain[this._key + 1].time) {
-                this._animationFrame = Number(this._pathMain[this._key + 1].time);
+            nextKeyTime = Number(this._pathMain[this._key + 1].time) || 0;
+
+            // If animationFrame is bigger than next Key Time, then  animationFrame = next Key Time
+            if (this._animationFrame + speed >= nextKeyTime) {
+                this._key++; 
+                this._animationFrame = nextKeyTime;
             }
             else {
                 this._animationFrame += speed;
@@ -919,55 +1092,66 @@ Spriter_Character.prototype.updateFrame = function() {
         // Works For Last Key
         else if (this._key == this._pathMain.length - 1) {
 
-            // If animationFrame is bigger than next Key Frame, then animationFrame = next Key Frame
-            if (this._animationFrame + speed > animLength) {
-                this._animationFrame = animLength;
+            // If animationFrame is bigger than Animation Length, animationFrame and key are reset.
+            if (this._animationFrame == this._animLength && this._repeat) {
+                this._animationFrame = 0;
+                this._key = 0;
+            } 
+
+            // If animationFrame is bigger than Animation Length, then  animationFrame = Animation Length
+            else if (this._animationFrame + speed >= this._animLength) {
+                this._animationFrame = this._animLength;
+                this._key = this._pathMain.length - 1;
             }
             else {
                 this._animationFrame += speed;
             }
 
-            // If animationFrame is at End of Animation and Animation Repeats, Set To Start Point
-            if (this._animationFrame == animLength && this._repeat) {
-                this._animationFrame = 0;
-                this._key = 0;
-            }  
         }
     }
     else if (speed < 0) {
 
-        // Works Until Last Key
+        // Works Until First Key
         if (this._key > 0) {
 
-            // If animationFrame is bigger that next Key Frame, then  animationFrame = next Key Frame
-            if (this._animationFrame + speed < this._pathMain[this._key - 1].time) {
-                this._animationFrame = Number(this._pathMain[this._key - 1].time);
+            nextKeyTime = Number(this._pathMain[this._key - 1].time) || 0;
+
+            // If animationFrame is bigger than next Key Time, then  animationFrame = next Key Time
+            if (this._animationFrame > nextKeyTime && this._animationFrame + speed <= nextKeyTime) {
+                this._key--; 
+                this._animationFrame = nextKeyTime;
             }
             else {
                 this._animationFrame += speed;
             }  
         }
 
-        // Works For Last Key
+        // Works For First Key
         else if (this._key === 0) {
 
-            // If animationFrame is bigger than next Key Frame, then animationFrame = next Key Frame
-            if (this._animationFrame + speed < 0) {
-                this._animationFrame = 0;
+            // If animationFrame is 0 and Animation repeats, then animationFrame = Animation Length
+    		if (this._animationFrame === 0 && this._repeat) {
+                this._animationFrame = this._animLength;
             }
+            // If animationFrame is smaller than 0 and Animation repeats  animationFrame = Animation Length
+            else if (this._animationFrame + speed < 0 && this._repeat) {
+                this._animationFrame = this._animLength;
+            }
+            else if (this._animationFrame + this._speed <= lastKeyTime && this._repeat) {
+            	this._key = this._pathMain.length - 1; 
+                this._animationFrame = lastKeyTime;
+            }
+            else if (this._animationFrame == lastKeyTime && this._repeat) {
+				this._animationFrame += speed;
+            } 
             else {
                 this._animationFrame += speed;
-            }
-
-            // If animationFrame is at End of Animation and Animation Repeats, Set To Start Point
-            if (this._animationFrame === 0 && this._repeat) {
-                this._animationFrame = animLength;
-                this._key = this._pathMain.length - 1;
             }  
         }
     }
     this._globalAnimationInfo.key = this._key; 
     this._globalAnimationInfo.frame = this._animationFrame;
+    this.updateDisplay();
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -978,286 +1162,312 @@ Spriter_Character.prototype.setCharacterSprite = function() {
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
     // Set Bones
-    var bonePrevFrame;
-    var boneNextFrame;
-    var boneKey;
-    var boneTime;
-    var isAnimated;
-
     if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
 
-        //Setting Bone Inheritance
+        //Going through all Bones for Current Key
         for(var j = 0; j < this._pathMain[this._key].bone_ref.length; j++) {
+            item = this.getItemForTime("bone", j);
+            //Setting Bone Inheritance
             this.updateBoneInheritance(j);
-        }
-
-        // Setting Bone Values
-        for(var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
-            boneTime = this._pathMain[this._key].bone_ref[n].timeline;
-            boneKey = Number(this._pathMain[this._key].bone_ref[n].key);
-            bonePrevFrame = this._pathTime[boneTime].key[boneKey].time || 0;
-            isAnimated = "this._pathTime[boneTime].key.length > 1";
-                
-
-            if (this._speed > 0) {
-
-                // Works Until Last Key
-                if (boneKey != this._pathTime[boneTime].key.length - 1){
-                    boneNextFrame = this._pathTime[boneTime].key[boneKey + 1].time;
-                    if (this._animationFrame == bonePrevFrame) {
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame > bonePrevFrame && this._animationFrame < boneNextFrame  && eval(isAnimated) && this.isMoving(this._character)) {
-                        this.boneMidKeyUpdate(n);
-                    }
-                }
-
-                // Works For Last Key
-                else if (boneKey == this._pathTime[boneTime].key.length - 1) {
-                    if (this._animationFrame == bonePrevFrame) {
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame > bonePrevFrame && this._repeat && eval(isAnimated)) {
-                        this.boneMidKeyUpdate(n); 
-                    }
-                    else if (this._pathTime[boneTime].key.length == 1){
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame > bonePrevFrame && !this._repeat) {
-                        this.boneKeyUpdate(n);
-                    }
-                }
-            }
-            else if (this._speed < 0) {
-
-
-                // Works Until Last Key
-                if (boneKey > 0){
-                    boneNextFrame = this._pathTime[boneTime].key[boneKey - 1].time;
-                    if (this._animationFrame == bonePrevFrame) {
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame < bonePrevFrame && this._animationFrame > boneNextFrame  && eval(isAnimated) && this.isMoving(this._character)) {
-                        this.boneMidKeyUpdate(n);
-                    }
-                }
-
-                // Works For Last Key
-                else if (boneKey == 0) {
-                    console.log(bonePrevFrame);
-                    if (this._animationFrame == bonePrevFrame) {
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame <= bonePrevFrame && this._repeat && eval(isAnimated)) {
-                        this.boneMidKeyUpdate(n); 
-                    }
-                    else if (this._pathTime[boneTime].key.length == 1){
-                        this.boneKeyUpdate(n);
-                    }
-                    else if (this._animationFrame < bonePrevFrame && !this._repeat) {
-                        this.boneKeyUpdate(n);
-                    }
-                }
-            }
+            //Setting Bone Values
+            this.setUpdateType(item);
         }
     }
-
-    // Set Object 
+	// Set Object 
     if (this._pathMain[this._key].hasOwnProperty('object_ref')) {
 
         //Going through all Objects for Current Key
-        for(var i = 0; i < this._pathMain[this._key].object_ref.length; i++){
-            var objectKey = Number(this._pathMain[this._key].object_ref[i].key);
-            var objectTimeline = this._pathMain[this._key].object_ref[i].timeline;
-            var objectCurrentFrame = this._pathTime[objectTimeline].key[objectKey].time || 0;
-            var objectNextFrame;
-            isAnimated = "this._pathTime[objectTimeline].key.length > 1";
+        for(var l = 0; l < this._pathMain[this._key].object_ref.length; l++){
+            item = this.getItemForTime("object", l);
+            //Setting Object Inheritance
+        	this.objectInheritanceUpdate(l);
+            //Setting Object Values
+            this.setUpdateType(item);
+        }
+    }
+    this.refreshSprite();
+};
 
-            if (this._speed > 0) {
-
-                // Works Until Last Key
-                if (objectKey != this._pathTime[objectTimeline].key.length - 1) {
-                    objectNextFrame = this._pathTime[objectTimeline].key[objectKey + 1].time;
-
-                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
-                    if (this._animationFrame == objectCurrentFrame) {
-                        this.objectKeyUpdate(i);
-                    }
-
-                    // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
-                    else if (this._animationFrame > objectCurrentFrame && this._animationFrame < objectNextFrame && eval(isAnimated)) {
-                        this.objectMidKeyUpdate(i);
-                    }
-                }
-
-                // Works For Last Key
-                else if (objectKey == this._pathTime[objectTimeline].key.length - 1) {
-
-                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
-                    if (this._animationFrame == objectCurrentFrame) {
-                        this.objectKeyUpdate(i);
-                    }
-
-                    // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
-                    else if (this._animationFrame > objectCurrentFrame && this._repeat && eval(isAnimated)){
-                        this.objectMidKeyUpdate(i);
-                    }
-                    else if (this._pathTime[objectTimeline].key.length == 1){
-                        this.objectKeyUpdate(i);
-                    }
-                    else if (this._animationFrame > objectCurrentFrame && !this._repeat) {
-                        this.objectKeyUpdate(i);
-                    }
-                }    
+// Clears items which are not used for current Key
+Spriter_Character.prototype.refreshSprite = function() {
+    currentKeyTime = Number(this._pathMain[this._key].time) || 0;
+    if (this._speed > 0 && this._animationFrame == currentKeyTime) {
+        for (var i = 0; i < this._element.length; i++) {
+            if (this._element[i].usedForKey) {
+                this._element[i].usedForKey = false;
             }
-            else if (this._speed < 0) {
-                // Works Until Last Key
-                if (objectKey > 0) {
-                    objectNextFrame = this._pathTime[objectTimeline].key[objectKey - 1].time;
-
-                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
-                    if (this._animationFrame == objectCurrentFrame) {
-                        this.objectKeyUpdate(i);
-                    }
-
-                    // If this._animationFrame Value is Between two Key Values, the Object is Updated by Comparing the Differences Between Keys
-                    else if (this._animationFrame < objectCurrentFrame && this._animationFrame > objectNextFrame && eval(isAnimated)) {
-                        this.objectMidKeyUpdate(i);
-                    }
-                }
-
-                // Works For Last Key
-                else if (objectKey === 0) {
-
-                    // If this._animationFrame has a Key Time, the Object is Updated according to Key 
-                    if (this._animationFrame == objectCurrentFrame) {
-                        this.objectKeyUpdate(i);
-                    }
-
-                    // If this._animationFrame Value is Higher than Last Key and this._repeat, next key is 0
-                    else if (this._animationFrame < objectCurrentFrame && this._repeat && eval(isAnimated)){
-                        this.objectMidKeyUpdate(i);
-                    }
-                    else if (this._pathTime[objectTimeline].key.length == 1){
-                        this.objectKeyUpdate(i);
-                    }
-                    else if (this._animationFrame > objectCurrentFrame && !this._repeat) {
-                        this.objectKeyUpdate(i);
-                    }
-                }    
+            else {
+                this._element[i].bitmap = null;
             }
         }
     }
 };
 
-
-//-------------------------------------------------------------------------------------------------------------
-// Updates this_object[i] according to the animation's key info.
-//-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.objectKeyUpdate = function(i) {
-
-    // Set Inheritance
-    if (this._object[i].parent !== null) {
-        this._object[i].parent.removeChild(this._object[i]);
+// Determines if animation frame is in item's Key, or between Keys. 
+Spriter_Character.prototype.setUpdateType = function(item) {
+    if (this._animationFrame == item.currentKeyTime) {
+        this.keyUpdate(item);
     }
-    if (this._pathMain[this._key].object_ref[i].hasOwnProperty('parent')) {
-         this._bone[this._pathMain[this._key].object_ref[i].parent].addChild(this._object[i]);
-    } 
+    else if (!this._repeat && this._animationFrame > item.lastKeyTime && this.isAnimated(item)) {
+        this.keyUpdate(item);
+    }
+    else if (!this.isAnimated(item)) {
+        this.keyUpdate(item);
+    }
+    else if (this.isBetweenKeys(item) && this.isMoving(this._character) && this.isAnimated(item)) {
+        this.midKeyUpdate(item);
+    }
+};
+
+// Returns Id of item from Timeline. Timeline Id is static and can be used for this._element
+Spriter_Character.prototype.pathTimeId = function(type, i) {
+	return Number(this._pathMain[this._key][type + "_ref"][i].timeline);
+};
+
+// Assigns type, times, and other properties to item.
+Spriter_Character.prototype.getItemForTime = function(type, i) {
+	var item;
+	id = this.pathTimeId(type, i);
+	if (type == "bone") {
+		item = this._element[id];
+		item_ref = this._pathMain[this._key].bone_ref[i];
+		item.type = "bone";
+	}
+	else {
+		item = this._element[id];
+		item_ref = this._pathMain[this._key].object_ref[i];
+		item.type = "object";
+	}
+    item.timelineId = Number(item_ref.timeline); //Id of bone in the Timeline
+
+    item.key = Number(item_ref.key); // Id of bone key for this._key
+
+    item.currentKey = this._pathTime[item.timelineId].key[item.key];
+    item.currentKeyTime = Number(item.currentKey.time) || 0;
+
+    item.lastKey = this._pathTime[item.timelineId].key[this._pathTime[item.timelineId].key.length - 1];
+    item.lastKeyTime = Number(item.lastKey.time) || 0;
+
+    if (this.isAnimated(item)) {
+    	item.firstKey = this._pathTime[item.timelineId].key[1];
+    	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[1].time);
+    }
     else {
-        if (this._object[i].parent !== this._sprite || this._object[i].parent === null) {
-            this._sprite.addChild(this._object[i]);
-        }
+    	item.firstKey = this._pathTime[item.timelineId].key[0];
+    	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[0].time) || 0;
+	}
+
+	item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
+    item.nextKeyTime = (item.nextKey.time) || 0;
+
+    // True since this Item exists for the span of the current Key
+    item.usedForKey = true;
+
+    return item;
+};
+
+// Determines Next Key according to this._speed sign
+Spriter_Character.prototype.getNextKey = function(item) {
+	if (this._speed > 0) {
+		if (item.currentKeyTime == item.lastKeyTime && this._repeat) {
+			return 0;
+		}
+		else if (item.currentKeyTime == item.lastKeyTime && !this._repeat) {
+			return item.key;
+		}
+		else {
+			return item.key + 1;
+		}
+	}
+	else {
+		if (item.currentKeyTime === 0 && this._repeat) {
+			return this._pathTime[item.timelineId].key.length - 1;
+		}
+		else if (item.currentKeyTime === 0 && !this._repeat) {
+			return item.key;
+		} 
+		else {
+			return item.key - 1;
+		}
+	}
+};
+
+// Checks if item has more than one Key (has change in values, ergo, animation)
+Spriter_Character.prototype.isAnimated = function(item) {
+	if (item.type == "bone") {
+		id = item.timelineId;
+		return this._pathTime[id].key.length > 1;
+	}
+	else {
+		id = item.timelineId;
+		return this._pathTime[id].key.length > 1;
+	}
+};
+
+
+Spriter_Character.prototype.isBetweenKeys = function(item) {
+	if (this._speed > 0) {
+		if (this._animationFrame < item.lastKeyTime) {
+			return this._animationFrame > item.currentKeyTime && this._animationFrame < item.nextKeyTime;
+		}
+		else {
+			return this._animationFrame > item.lastKeyTime;
+		}
+	}
+	else {
+		if (this._animationFrame > item.lastKeyTime) {
+			return true;
+		}
+		else if (this._animationFrame < item.lastKeyTime) {
+			return this._animationFrame < item.currentKeyTime && this._animationFrame > item.nextKeyTime;
+		}
+		else {
+			return item.lastKeyTime !== 0;
+		}
+	}
+};
+
+//-------------------------------------------------------------------------------------------------------------
+// Updates item according to key info.
+//-------------------------------------------------------------------------------------------------------------
+Spriter_Character.prototype.keyUpdate = function(item) {
+    var globals = this._globalAnimationInfo;
+    if (item.type === "bone") {
+    	if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
+        	globals.bones["bone_" + String(item.timelineId)] = {};
+    	}
+	}
+	else {
+	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
+    	    globals.objects["object_" + String(item.timelineId)] = {};
+    	}
+	}
+
+    var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
+
+   	this.updateBitmaps(item);
+
+    // General Values ------------------------------------
+
+    // Getting item Values for Key
+    var x = Number(element.x) || 0;
+    var y = Number(element.y) || 0;
+    var r = Number(element.angle) || 0;
+    var sx = element.scale_x || 1;
+    sx = Number(sx);
+    var sy = element.scale_y || 1;
+    sy = Number(sy);
+
+    // Setting item Values for Key
+    item.move(x, -y);
+    item.rotation = ((-r) * Math.PI / 180);
+    item.scale.x = sx;
+    item.scale.y = sy;
+
+    // ---------------------------------------------------
+
+    // Object-specific Values ----------------------------
+    if (item.type === "object") {
+    
+    	// Getting Object Values for Key
+    	var folderId = Number(element.folder);
+	    var fileId = Number(element.file);
+	    var w = Number(this._animation.folder[folderId].file[fileId].width);
+	    var h = Number(this._animation.folder[folderId].file[fileId].height);
+	    var ax = Number(element.pivot_x) || 0;
+	    var ay = 1 - Number(element.pivot_y) || 0;
+	    var a = element.a || 1;
+	    a = Number(a);
+
+    	// Setting Object Values for Key
+        item.alpha = a;
+	    item.anchor.x = ax;
+	    item.anchor.y = ay;
+	    
+		this.controlChildSprites(item.timelineId, w, h);
     }
 
-    // Get Object Key ID
-    var time = Number(this._pathMain[this._key].object_ref[i].key);    
-    var object = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].key[time].object;
-    var folderId = Number(object.folder);
-    var fileId = Number(object.file);
-    var timelineName = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].name.replace(/\_(\d){3}/, '');
-    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
-    fileName = fileName.replace(".png", '');
-    var skin = this._skin;
-    var skinParts = this._skinParts;
+    // ---------------------------------------------------
 
-    // Check for Skin Parts
-    for (var j = 0; j < skinParts.length; j++){
-        if (skinParts[j].skinName == timelineName) {
-            skin = skinParts[j].skinSet;
-            break;
-        }
-    }
+    // Storing Values to Global Variable 
+    this.storeToGlobal(item);
+};
 
-    // Set Bitmap
-    if (this._object[i]._fileName !== fileName || this._object[i]._skin !== skin) {
-        this._object[i].bitmap = ImageManager.loadCharacter("Spriter/"+ skin + "/" + fileName);
-        this._object[i]._fileName = fileName;
-        this._object[i]._skin = skin;
-    }
+// Assigns the correct image for object / draws bitmap for bone.
+Spriter_Character.prototype.updateBitmaps = function (item) {
 
-    // Set Object Values
-    var w = Number(this._animation.folder[folderId].file[fileId].width);
-    var h = Number(this._animation.folder[folderId].file[fileId].height);
-    var ox = Number(object.x) || 0;
-    var oy = Number(object.y) || 0;
-    var or = Number(object.angle) || 0;
-    var oax = Number(object.pivot_x) || 0;
-    var oay = 1 - Number(object.pivot_y) || 0;
-    var oa = object.a || 1;
-    oa = Number(oa);
-    var osx = object.scale_x || 1;
-    osx = Number(osx);
-    var osy = object.scale_y || 1;
-    osy = Number(osy);
-    var z = Number(this._pathMain[this._key].object_ref[i].z_index);
-    var x = ox; 
-    var y = oy;
+	// Object Bitmaps / Character Parts
+	if (item.type === "object") {
+    	var object = item.currentKey.object;
+	    var folderId = Number(object.folder);
+	    var fileId = Number(object.file);
+	    var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
+	    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
+	    fileName = fileName.replace(".png", '');
+	    var skin = this._skin;
+	    var skinParts = this._skinParts;
+        var path = "Spriter/"+ skin + "/" + fileName;
 
-    this._object[i].move(x, -y);
-    this._object[i].alpha = oa;
-    this._object[i].rotation = ((-or) * Math.PI / 180);
-    this._object[i].anchor.x = oax;
-    this._object[i].anchor.y = oay;
-    this._object[i].scale.x = osx;
-    this._object[i].scale.y = osy;
-    this._object[i].zIndex = z;
+	    // Check for Skin Parts
+	    for (var j = 0; j < skinParts.length; j++){
+	        if (skinParts[j].skinName == timelineName) {
 
-    // Set Inherited Sprite
-    this.controlChildSprites(i, w, h);
+                // If Sprite Change is a Full Sprite, then redirect to another Skinset
+                if (skinParts[j].fullSprite) {
+                    path = "Spriter/"+ skinParts[j].skinSet + "/" + fileName;
+                }
 
-    //Storing Values to Global Variable 
-    this.storeToGlobal("object", this._object[i], i);
+                // If not, then replace with an imagee from Single Bitmaps
+                else {
+                    path = "Spriter/Single Bitmaps/" + skinParts[j].skinSet;
+                }
+	            break;
+	        }
+	    }
+
+	    // Set Bitmap
+	    item.bitmap = ImageManager.loadCharacter(path);
+	}
+	// Bone Bitmaps / Skeleton Display
+	else {
+	    if (showSkeleton) {
+	        var boneId = Number(this._pathTime[item.timelineId].obj);
+	        var w = Number(this._animation.entity.obj_info[boneId].w);
+	        var h = 4;
+	        item.bitmap = new Bitmap(w, h);
+	        item.bitmap.fillRect(0, -2, w, h, 'black');
+	        item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
+
+    	}
+	}
 
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Check if this._object has a Child Sprite and set inheritance
+// Check if item has a Child Sprite and set inheritance
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.controlChildSprites = function(i, w, h) {
-    var timelineName = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].name.replace(/\_(\d){3}/, '');
-    var spriteChanges = this._spriteChildren;
-    for (var k = 0; k < spriteChanges.length; k++) {
-        if (spriteChanges[k].skinName == timelineName) {
+    var timelineName = this._pathTime[this._element[i].timelineId].name.replace(/\_(\d){3}/, '');
+    var spriteChildren = this._spriteChildren;
+    for (var k = 0; k < spriteChildren.length; k++) {
+        if (spriteChildren[k].skinName == timelineName) {
             var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
             for (var l = 0; l < childSprites.length; l++) {
-            	var case_1 = "childSprites[l]._character._name == spriteChanges[k].sprite";
-            	var case_2 = "childSprites[l]._spriteParent === undefined";
-            	var case_3 = "childSprites[l]._spriteParent == spriteChanges[k].parent";
-                if (eval(case_1) && (eval(case_2) || eval(case_3))) {
-                	if (!spriteChanges[k].remove) {
+                if (this.isChildForThis(l, k) && this.hasNoParent(l) || this.hasSameParent(l, k)) {
+                	if (!spriteChildren[k].remove) {
                 		childSprites[l].x = 0;
 	                    childSprites[l].y = 0;
-	                    childSprites[l]._sprite.x = 0 - (this._object[i].anchor.x * w);
-	                    childSprites[l]._sprite.y = 0 - (this._object[i].anchor.y * h);
-	                    this._object[i].addChild(childSprites[l]);
-	                    childSprites[l]._spriteParent = spriteChanges[k].parent;
+	                    childSprites[l]._sprite.x = 0 - (this._element[i].anchor.x * w);
+	                    childSprites[l]._sprite.y = 0 - (this._element[i].anchor.y * h);
+	                    this._element[i].addChild(childSprites[l]);
+	                    childSprites[l]._spriteParent = spriteChildren[k].parent;
 	                    break;	
                 	}
-                    // Removes child Sprte from character's Sprite Children and Global 
+                    // Removes child Sprite from character's Sprite Children and Global 
                 	else {
-                		childSprites[l].alpha = 0;
-            		    spriteChanges.splice(k, 1);
+            		    spriteChildren.splice(k, 1);
                 		childSprites.splice(l, 1);
+                        this._element[i].removeChildren();
                 		break;
                 	}
                 }
@@ -1266,263 +1476,135 @@ Spriter_Character.prototype.controlChildSprites = function(i, w, h) {
     }
 };
 
-//-------------------------------------------------------------------------------------------------------------
-// Updates this_object[i] according to the mid-key info.
-// Difference in value between two keys is divided with the difference in time between two keys.
-// The fraction is added to the previous frame value.
-//-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.objectMidKeyUpdate = function(i) {
+Spriter_Character.prototype.isChildForThis = function(l ,k) {
+    var spriteChildren = this._spriteChildren;
+    var childSprites = $gameVariables._data[spriterVarId]._childSprites; 
+	return childSprites[l]._character._name == spriteChildren[k].sprite;
+};
 
-    var globals = this._globalAnimationInfo;
-    if (!globals.objects.hasOwnProperty("object_" + String(i))) {
-        globals.objects["object_" + String(i)] = {};
-    }
-    var globalsObject = globals.objects["object_" + String(i)];
+Spriter_Character.prototype.hasNoParent = function(l) {
+    var spriteChildren = this._spriteChildren;
+    var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
+	return childSprites[l]._spriteParent === undefined;
+};
 
-    // Getting Keys & Times
-    var time = Number(this._pathMain[this._key].object_ref[i].key);
-    var key = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].key;
-    var currentKey = key[time];
-    var nextKey;
-    var firstKey = key[0];
-    var lastKey = key[key.length - 1];
-    var currentKeyTime = currentKey.time || 0;
-
-    if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
-        nextKey = 0;
-    }
-    else if (!this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
-        nextKey = currentKey;
-    }
-    else if (this._speed > 0) {
-        nextKey = time + 1;
-    }
-    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
-        nextKey = lastKey;
-    }
-    else if (!this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
-        nextKey = currentKey;
-    }
-    else if (this._speed < 0) {
-        nextKey = time - 1;
-    }
-    var pt = Number(key[time].time) || 0;
-    var nt;
-
-    if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
-        nt = Number(this._animation.entity.animation[this._animationId].length);
-    }
-    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
-    	nt = 0;
-    }
-    else {
-        nt =  Number(key[nextKey].time) || 0;
-    }
-
-    var t = Math.abs((nt - pt) / this._speed);
-    var object = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].key[time].object;
-    var folderId = Number(object.folder);
-    var fileId = Number(object.file);
-    var timelineName = this._pathTime[this._pathMain[this._key].object_ref[i].timeline].name.replace(/\_(\d){3}/, '');
-    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
-    fileName = fileName.replace(".png", '');
-    var skin = this._skin;
-    var skinParts = this._skinParts;
-    var spriteChanges = this._spriteChildren;
-
-    // Check for Skin Parts
-    for (var j = 0; j < skinParts.length; j++){
-        if (skinParts[j].skinName == timelineName) {
-            skin = skinParts[j].skinSet;
-            break;
-        }
-    }
-
-    // Set Bitmap
-    if (this._object[i]._fileName !== fileName || this._object[i]._skin !== skin) {
-        this._object[i].bitmap = ImageManager.loadCharacter("Spriter/"+ skin + "/" + fileName);
-        this._object[i]._fileName = fileName;
-        this._object[i]._skin = skin;
-    }
-
-    //Getting Previous Key Object Values
-    var pObject = key[time].object;
-    var px = Number(pObject.x) || 0;
-    var py = Number(pObject.y) || 0;
-    var pr = Number(pObject.angle) || 0;
-    var pa = (pObject.a) || 1;
-    pa = Number(pa);
-    var psx = (pObject.scale_x) || 1;
-    psx = Number(psx);
-    var psy = (pObject.scale_y) || 1;
-    psy = Number(psy);
-
-    //Getting Next Key Object Values
-    var nObject = key[nextKey].object;
-    var nx = Number(nObject.x) || 0;
-    var ny = Number(nObject.y) || 0;
-    var nr = Number(nObject.angle) || 0;
-    var na = (nObject.a) || 1;
-    na = Number(na);
-    var nsx = (nObject.scale_x) || 1;
-    nsx = Number(nsx);
-    var nsy = (nObject.scale_y) || 1;
-    nsy = Number(nsy);
-
-    //Determining Spin
-    var spin = this._speed > 0 ? (Number(key[time].spin) || 1) : -(Number(key[nextKey].spin) || 1);
-    var dr;
-
-    if (spin == -1 && nr > pr) {
-        dr = nr - pr - 360;
-    }
-    else if (spin == 1 && nr < pr) {
-        dr = nr - pr + 360;
-    }
-    else {
-        dr = nr - pr;
-    }
-    
-
-	// Getting Object Values for Previous Frame
-    var ox = this._object[i].x;
-    var oy = this._object[i].y;
-    var or = this._object[i].rotation;
-    var oa = this._object[i].alpha;
-    var osx = this._object[i].scale.x;
-    var osy = this._object[i].scale.y;
-
-    // Setting Object Values for Current Frame
-    this._object[i].x = ox + ((nx - px) / t);
-    this._object[i].y = oy + ((-ny + py) / t);
-    this._object[i].rotation = or + (((-dr) / t) * Math.PI / 180);
-    this._object[i].alpha = oa + ((na - pa) / t);
-    this._object[i].scale.x = osx + ((nsx - psx) / t);
-    this._object[i].scale.y = osy + ((nsy - psy) / t);
-
-    //Storing Values to Global Variable 
-    this.storeToGlobal("object", this._object[i], i);
+Spriter_Character.prototype.hasSameParent = function(l ,k) {
+    var spriteChildren = this._spriteChildren;
+    var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
+	return childSprites[l]._spriteParent == spriteChildren[k].parent;
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Check if this._bone[n] has parent and check inheritance
+// Checks if bone has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.updateBoneInheritance = function(j) {
-    if (this._pathMain[this._key].bone_ref[j].hasOwnProperty('parent')) {
-        this._bone[this._pathMain[this._key].bone_ref[j].parent].addChild(this._bone[j]);
+	id = this.pathTimeId("bone", j);
+	if (this._pathMain[this._key].bone_ref[j].hasOwnProperty('parent')) {
+		parentMainId = this._pathMain[this._key].bone_ref[j].parent;
+        parentTimeId = this.pathTimeId("bone", parentMainId);
+        this._element[parentTimeId].addChild(this._element[id]);
     }
     else {
-        this._sprite.addChild(this._bone[j]);
+        this._sprite.addChild(this._element[id]);
     }
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Updates this._bone[n] according to key info.
+// Checks if object has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.boneKeyUpdate = function(n) {
-
-    var globals = this._globalAnimationInfo;
-    if (!globals.bones.hasOwnProperty("bone_" + String(n))) {
-        globals.bones["bone_" + String(n)] = {};
+Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
+	id = this.pathTimeId("object", i);
+    if (this._pathMain[this._key].object_ref[i].hasOwnProperty('parent')) {
+    	parentMainId = this._pathMain[this._key].object_ref[i].parent;
+    	parentTimeId = this.pathTimeId("bone", parentMainId);
+        this._element[parentTimeId].addChild(this._element[id]);
+    } 
+    else {
+        if (this._element[id].parent !== this._sprite || this._element[id].parent === null) {
+            this._sprite.addChild(this._element[id]);
+        }
     }
-
-    if (showSkeleton) {
-        var boneId = Number(this._pathTime[this._pathMain[this._key].bone_ref[n].timeline].obj);
-        var w = Number(this._animation.entity.obj_info[boneId].w);
-        var h = 4;
-        this._bone[n].bitmap = new Bitmap(w, h);
-        this._bone[n].bitmap.fillAll('black');
-        this._bone[n].bitmap.fillRect(1,1, w-2, h-2, 'white');
-    }
-
-    var time = Number(this._pathMain[this._key].bone_ref[n].key);
-    var bone = this._pathTime[this._pathMain[this._key].bone_ref[n].timeline].key[time].bone;    
-    var bx = Number(bone.x) || 0;
-    var by = Number(bone.y) || 0;
-    var br = Number(bone.angle) || 0;
-    var bsx = bone.scale_x || 1;
-    bsx = Number(bsx);
-    var bsy = bone.scale_y || 1;
-    bsy = Number(bsy);
-    this._bone[n].move(bx, -by);
-    this._bone[n].rotation = -br * Math.PI / 180;
-    this._bone[n].scale.x = bsx;
-    this._bone[n].scale.y = bsy;
-
-    //Storing Values to Global Variable 
-    this.storeToGlobal("bone", this._bone[n], n);
+    var z = Number(this._pathMain[this._key].object_ref[i].z_index);
+	this._element[id].zIndex = z;
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Updates this._bone[n] according to the mid-key info.
+// Updates item according to the mid-key info.
 // Difference in value between two keys is divided with the difference in time between two keys.
 // The fraction is added to the previous frame value.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.boneMidKeyUpdate = function(n) {
+Spriter_Character.prototype.midKeyUpdate = function(item) {
 
+    // Reset Global Value
     var globals = this._globalAnimationInfo;
-    if (!globals.bones.hasOwnProperty("bone_" + String(n))) {
-        globals.bones["bone_" + String(n)] = {};
+    if (item.type === "bone") {
+	    if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
+	        globals.bones["bone_" + String(item.timelineId)] = {};
+	    }
+	}
+    else {
+	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
+	        globals.objects["object_" + String(item.timelineId)] = {};
+	    }
     }
-    var globalsBone = globals.bones["bone_" + String(n)];
 
     // Getting Keys & Times
-    var time = Number(this._pathMain[this._key].bone_ref[n].key);
-    var key = this._pathTime[this._pathMain[this._key].bone_ref[n].timeline].key;
-    var currentKey = key[time];
-    var currentKeyTime = currentKey.time || 0;
-    var nextKey;
-    var firstKey = key[0];
-    var lastKey = key[key.length - 1];
- 
-    if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
-        nextKey = 0;
-    }
-    else if (this._speed > 0) {
-        nextKey = time + 1;
-    }
-    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
-        nextKey = lastKey;
-    }
-    else if (this._speed < 0) {
-        nextKey = time - 1;
-    }
-    var pt = Number(key[time].time) || 0;
-    var nt;
-    if (this._repeat && this._speed > 0 && currentKeyTime == lastKey.time) {
-        nt = Number(this._animation.entity.animation[this._animationId].length);
-    }
-    else if (this._repeat && this._speed < 0 && currentKeyTime == firstKey.time) {
-        nt = 0;
+    var pt;
+    if (this._repeat && this._speed < 0 && item.currentKeyTime === 0) {
+        pt = this._animLength;
     }
     else {
-        nt =  Number(key[nextKey].time) || 0;
+        pt = item.currentKeyTime;
+    }
+
+    var nt;
+    if (this._repeat && this._speed > 0 && item.currentKeyTime == item.lastKeyTime) {
+        nt = this._animLength;
+    }
+    else if (this._repeat && this._speed < 0 && item.currentKeyTime === 0) {
+        nt = item.lastKeyTime;
+    }
+    else {
+        nt =  item.nextKeyTime;
     }
 
     var t = Math.abs((nt - pt) / this._speed);
 
+    // General Values ------------------------------------
+
     //Getting Previous Key Bone Values
-    var pBone = key[time].bone;
-    var px = Number(pBone.x) || 0;
-    var py = Number(pBone.y) || 0;
-    var pr = Number(pBone.angle) || 0;
-    var psx = pBone.scale_x || 1;
+    var pElement = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
+    var px = Number(pElement.x) || 0;
+    var py = Number(pElement.y) || 0;
+    var pr = Number(pElement.angle) || 0;
+    var psx = pElement.scale_x || 1;
     psx = Number(psx);
-    var psy = pBone.scale_y || 1;
+    var psy = pElement.scale_y || 1;
     psy = Number(psy);
 
     //Getting Next Key Bone Values
-    var nBone = key[nextKey].bone;
-    var nx = Number(nBone.x) || 0;
-    var ny = Number(nBone.y) || 0;
-    var nr = Number(nBone.angle) || 0;
-    var nsx = nBone.scale_x || 1;
+    var nElement = item.type === "object" ? item.nextKey.object : item.nextKey.bone;
+    var nx = Number(nElement.x) || 0;
+    var ny = Number(nElement.y) || 0;
+    var nr = Number(nElement.angle) || 0;
+    var nsx = nElement.scale_x || 1;
     nsx = Number(nsx);
-    var nsy = nBone.scale_y || 1;
+    var nsy = nElement.scale_y || 1;
     nsy = Number(nsy);
 
+    // forceUpdate is True when when the player uses a plugin command to change Bitmaps 
+    this.updateBitmaps(item);
+    if (item.type ==="object") {
+        // Getting Object Values for Key
+        var folderId = Number(pElement.folder);
+        var fileId = Number(pElement.file);
+        var w = Number(this._animation.folder[folderId].file[fileId].width);
+        var h = Number(this._animation.folder[folderId].file[fileId].height);
+        this.controlChildSprites(item.timelineId, w, h);
+    }
+
     //Determining Spin
-    var spin = this._speed > 0 ? (Number(key[time].spin) || 1) : -(Number(key[nextKey].spin) || 1);
+    var spin = this._speed > 0 ? (Number(item.currentKey.spin) || 1) : -(Number(item.nextKey.spin) || 1);
     var dr;
 
     if (spin == -1 && nr > pr) {
@@ -1536,35 +1618,57 @@ Spriter_Character.prototype.boneMidKeyUpdate = function(n) {
     }
 
     // Getting Previous Frame Values 
-    var bx = this._bone[n].x;
-    var by = this._bone[n].y;
-    var br = this._bone[n].rotation;
-    var bsx = this._bone[n].scale.x;
-    var bsy = this._bone[n].scale.y;
+    var bx = item.x;
+    var by = item.y;
+    var br = item.rotation;
+    var bsx = item.scale.x;
+    var bsy = item.scale.y;
 
     // Setting Bone Values for Current Frame
-    this._bone[n].x = bx + ((nx - px) / t);
-    this._bone[n].y = by + ((-ny + py) / t);
-    this._bone[n].rotation = br + ((-dr / t) * Math.PI / 180);
-    this._bone[n].scale.x = bsx + ((nsx - psx) / t);
-    this._bone[n].scale.y = bsy + ((nsy - psy) / t);
+    item.x = bx + ((nx - px) / t);
+    item.y = by + ((-ny + py) / t);
+    item.rotation = br + ((-dr / t) * Math.PI / 180);
+    item.scale.x = bsx + ((nsx - psx) / t);
+    item.scale.y = bsy + ((nsy - psy) / t);
+
+    // ---------------------------------------------------
+
+    // Object-specific Values ----------------------------
+    if (item.type === "object") {
+
+    	// Getting Previous Frame Values
+    	var a = item.alpha;
+   		
+   		//Getting Previous Key Object Values
+		var pa = (pElement.a) || 1;
+	    pa = Number(pa);
+
+   		//Getting Next Key Object Values
+		var na = (nElement.a) || 1;
+	    na = Number(na);
+	    var nax = Number(nElement.pivot_x) || 0;
+	    var nay = 1 - Number(nElement.pivot_y) || 0;
+	    var pax = Number(pElement.pivot_x) || 0;
+	    var pay = 1 - Number(pElement.pivot_y) || 0;
+
+    	// Setting Object Values for Current Frame
+	    item.alpha = a + ((na - pa) / t);
+	    if (this._speed < 0) {
+			item.anchor.x = nax;
+	  		item.anchor.y = nay;
+	    }
+    }
+
+    // ---------------------------------------------------
 
     //Storing Values to Global Variable 
-    this.storeToGlobal("bone", this._bone[n], n);
+    this.storeToGlobal(item);
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Moves Sprite from 0,0 point to -width/2,-height point. 
+// Storing Element values to global
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.displaceSprite = function() {
-    this._sprite.x = -this._cellX/2;
-    this._sprite.y = -this._cellY;
-};
-
-//-------------------------------------------------------------------------------------------------------------
-// Storing bone/object values to global
-//-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.storeToGlobal = function(type, item, number) {
+Spriter_Character.prototype.storeToGlobal = function(item) {
     var characterGlobal;
     if (this._character.constructor === Game_Player) {
         characterGlobal = $gameVariables._data[spriterVarId].player;
@@ -1583,19 +1687,20 @@ Spriter_Character.prototype.storeToGlobal = function(type, item, number) {
         var name = String(this._character._name);
         characterGlobal = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
     }
-    if (type === "bone") {
-        var bone = characterGlobal.bones[type + "_" + String(number)];
+    characterGlobal.dir = this._character_direction;
+    if (item.type === "bone") {
+        var bone = characterGlobal.bones[item.type + "_" + String(item.timelineId)];
         bone.x = item.x;
         bone.y = item.y;
         bone.r = item.rotation;
         bone.sx = item.scale.x;
         bone.sy = item.scale.y;
     }
-    else if (type === "object") {
-    	if (characterGlobal.objects.hasOwnProperty(type + "_" + String(number))) {
-    		characterGlobal.objects[type + "_" + String(number)] = {};
+    else if (item.type === "object") {
+    	if (!characterGlobal.objects.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
+    		characterGlobal.objects[item.type + "_" + String(item.timelineId)] = {};
     	}
-        var object = characterGlobal.objects[type + "_" + String(number)];
+        var object = characterGlobal.objects[item.type + "_" + String(item.timelineId)];
         object.x = item.x;
         object.y = item.y;
         object.r = item.rotation;
@@ -1618,15 +1723,16 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
     var id;
     var event;
     if (this._animation.entity.animation[this._animationId].hasOwnProperty('meta')) {
-
         // Update Vars
         if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('varline')) {
+            if (this._skeleton == "f_wood_cut_repeat") {
+        }
             var varline = this._animation.entity.animation[this._animationId].meta.varline;
             for (var i = 0; i < varline.length; i++) {
                 for (var j = 0; j < varline[i].key.length; j++) {
-                    var time = Number(varline[i].key[j].time);
-                    var case_1 = "this._animationFrame == time";
-                    var case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
+                    time = Number(varline[i].key[j].time);
+                    case_1 = "this._animationFrame == time";
+                    case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
 
                     // Making Sure that the Var updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
                     if (eval(case_1) || eval(case_2)) {
@@ -1652,18 +1758,22 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
         // Update Tags
         if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('tagline')) {
             var tagline =  this._animation.entity.animation[this._animationId].meta.tagline;
+            this._character._spriter.tag = [];
+            this._globalAnimationInfo.tag = [];
             for (var i = 0; i < tagline.key.length; i++) {
-                var time = Number(tagline.key[i].time);
-                var case_1 = "this._animationFrame == time";
-                var case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
+                time = Number(tagline.key[i].time);
+                case_1 = "this._animationFrame == time";
+                case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
                 // Making Sure that the Tag updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
                 if (eval(case_1) || eval(case_2)) {
                     if (tagline.key[i].tag) {
                         for (var j = 0; j < tagline.key[i].tag.length; j++) {
+
                             var tag = tagline.key[i].tag[j];
                             var tagName = this._animation.tag_list.i[tag.t];
                             this._character._spriter.tag.push(tagName);
                             this._globalAnimationInfo.tag.push(tagName);
+
                         }
                     }
                 } 
@@ -1673,7 +1783,7 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
 };
 
 //-------------------------------------------------------------------------------------------------------------
-// Functions shared with Sprite Characters
+// Functions shared with Sprite_Characters
 //-------------------------------------------------------------------------------------------------------------
 
 Spriter_Character.prototype.updateVisibility = function() {
@@ -1904,6 +2014,9 @@ function setSpriterData(data, name){
 function createAnimationGlobal(data, name){
     obj2Arr(data);
     $spriterAnimations[name] = data;
+    console.log(name);
+    console.log(data);
+    console.log('-----------------');
 }
 
 //-------------------------------------------------------------------------------------------------------------     
@@ -1938,6 +2051,15 @@ function obj2Arr(data) {
             temp = data.tag_list.i;
             delete data.tag_list.i;
             data.tag_list.i = [temp];
+        }
+    }
+
+    // object info
+    if (data.entity.hasOwnProperty("obj_info")){
+        if (data.entity.obj_info.constructor === Object) {
+            temp = data.entity.obj_info;
+            delete data.entity.obj_info;
+            data.entity.obj_info = [temp];
         }
     }
 
@@ -1978,6 +2100,11 @@ function obj2Arr(data) {
 
             // tagline
             if (data.entity.animation[i].meta.hasOwnProperty("tagline")) {
+                if (data.entity.animation[i].meta.tagline.key.constructor == Object) {
+                    temp = data.entity.animation[i].meta.tagline.key;
+                    delete data.entity.animation[i].meta.tagline.key;
+                    data.entity.animation[i].meta.tagline.key = [temp];
+                }
                 for (var j = 0; j < data.entity.animation[i].meta.tagline.key.length; j++) {
                     if (data.entity.animation[i].meta.tagline.key[j].tag) {
                         if (data.entity.animation[i].meta.tagline.key[j].tag.constructor == Object) {
@@ -2107,13 +2234,6 @@ function getFiles (dir){
 var spriter_alias_game_interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function(command, args) {
     spriter_alias_game_interpreter_pluginCommand.apply(this);
-    var event;
-    var follower;
-    var mapId;
-    var eventId;
-    var eventGlobalInfo;
-    var playerGlobalInfo;
-    var followerGlobalInfo;
 
     //-------------------------------------------------------------------------------------------------------------     
     // Events
@@ -2165,11 +2285,12 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.skinSet = args[2];
+        a.fullSprite = eval(args[3]);
         if (event._skinParts.length > 0) {
-            for (var i = 0; i < event._skinParts.length; i++) {
+            for (i = 0; i < event._skinParts.length; i++) {
                 if (event._skinParts[i].skinName == a.skinName) {
                     event._skinParts[i] = a;
                     break;
@@ -2184,18 +2305,35 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         }
         eventGlobalInfo._skinParts = event._skinParts;
     }
+    else if (command === "eventRemoveSkinPart") {
+        event = $gameMap.event(args[0])._spriter;
+        mapId = "map_" + String($gameMap.event(args[0])._mapId);
+        eventId = "event_" + String($gameMap.event(args[0])._eventId);
+        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        a = {};
+        a.skinName = args[1];
+        if (event._skinParts.length > 0) {
+            for (i = 0; i < event._skinParts.length; i++) {
+                if (event._skinParts[i].skinName == a.skinName) {
+                    event._skinParts.splice(i,1);
+                    break;
+                }
+            }
+        }
+        eventGlobalInfo._skinParts = event._skinParts;
+    }
     else if (command === "eventChildSprite") {
         event = $gameMap.event(args[0])._spriter;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.sprite = args[2];
         a.remove = false;
         a.parent = 'event_' + args[0];
         if (event._spriteChildren.length > 0) {
-            for (var i = 0; i < event._spriteChildren.length; i++) {
+            for (i = 0; i < event._spriteChildren.length; i++) {
                 if (event._spriteChildren[i].skinName == a.skinName) {
                     event._spriteChildren[i] = a;
                     break;
@@ -2214,13 +2352,13 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventRemoveChildSprite") {
         event = $gameMap.event(args[0])._spriter;
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.sprite = args[2];
         a.parent = 'event_' + args[0];
         a.remove = true;
         if (event._spriteChildren.length > 0) {
-            for (var i = 0; i < event._spriteChildren.length; i++) {
+            for (i = 0; i < event._spriteChildren.length; i++) {
                 if (event._spriteChildren[i].skinName == a.skinName) {
                     event._spriteChildren[i] = a;
                     break;
@@ -2266,11 +2404,12 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "playerSkinPart") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        var a = {};
+        a = {};
         a.skinName = args[0];
         a.skinSet = args[1];
+        a.fullSprite = eval(args[3]);
         if ($gamePlayer._spriter._skinParts.length > 0) {
-            for (var i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
+            for (i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
                 if ($gamePlayer._spriter._skinParts[i].skinName == a.skinName) {
                     $gamePlayer._spriter._skinParts[i] = a;
                     break;
@@ -2285,15 +2424,29 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         }
         playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
     }
+    else if (command === "playerRemoveSkinPart") {
+        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        a = {};
+        a.skinName = args[0];
+        if ($gamePlayer._spriter._skinParts.length > 0) {
+            for (i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
+                if ($gamePlayer._spriter._skinParts[i].skinName == a.skinName) {
+                    $gamePlayer._spriter._skinParts.splice(i,1);
+                    break;
+                }
+            }
+        }
+        playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
+    }
     else if (command === "playerChildSprite") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        var a = {};
+        a = {};
         a.skinName = args[0];
         a.sprite = args[1];
         a.parent = "player";
         a.remove = false;
         if ($gamePlayer._spriter._spriteChildren.length > 0) {
-            for (var i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
+            for (i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
                 if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
                     $gamePlayer._spriter._spriteChildren[i] = a;
                     break;
@@ -2310,13 +2463,13 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         $gameVariables._data[spriterVarId]._spriteRequests.push(a);
     }
     else if (command === "playerRemoveChildSprite") {
-        var a = {};
+        a = {};
         a.skinName = args[0];
         a.sprite = args[1];
         a.parent = "player";
         a.remove = true;
         if ($gamePlayer._spriter._spriteChildren.length > 0) {
-            for (var i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
+            for (i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
                 if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
                     $gamePlayer._spriter._spriteChildren[i] = a;
                     break;
@@ -2370,11 +2523,12 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     else if (command === "followerSkinPart") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.skinSet = args[2];
+        a.fullSprite = eval(args[3]);
         if (follower._skinParts.length > 0) {
-            for (var i = 0; i < follower._skinParts.length; i++) {
+            for (i = 0; i < follower._skinParts.length; i++) {
                 if (follower._skinParts[i].skinName == a.skinName) {
                     follower._skinParts[i] = a;
                     break;
@@ -2389,16 +2543,31 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         }
         followerGlobalInfo._skinParts = follower._skinParts;
     }
+    else if (command === "followerRemoveSkinPart") {
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
+        a = {};
+        a.skinName = args[1];
+        if (follower._skinParts.length > 0) {
+            for (i = 0; i < follower._skinParts.length; i++) {
+                if (follower._skinParts[i].skinName == a.skinName) {
+                    follower._skinParts.splice(i,1);
+                    break;
+                }
+            }
+        }
+        followerGlobalInfo._skinParts = follower._skinParts;
+    }
     else if (command === "followerChildSprite") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.sprite = args[2];
         a.remove = false;
         a.parent = 'follower';
         if (follower._spriteChildren.length > 0) {
-            for (var i = 0; i < follower._spriteChildren.length; i++) {
+            for (i = 0; i < follower._spriteChildren.length; i++) {
                 if (follower._spriteChildren[i].skinName == a.skinName) {
                     follower._spriteChildren[i] = a;
                     break;
@@ -2417,13 +2586,13 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerRemoveChildSprite") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        var a = {};
+        a = {};
         a.skinName = args[1];
         a.sprite = args[2];
         a.parent = 'follower';
         a.remove = true;
         if (follower._spriteChildren.length > 0) {
-            for (var i = 0; i < follower._spriteChildren.length; i++) {
+            for (i = 0; i < follower._spriteChildren.length; i++) {
                 if (follower._spriteChildren[i].skinName == a.skinName) {
                     follower._spriteChildren[i] = a;
                     break;
@@ -2437,6 +2606,116 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
             follower._spriteChildren.push(a);
         }
     }
+};
+
+//-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Check Character for Active Tags
+//*************************************************************************************************************
+//-------------------------------------------------------------------------------------------------------------
+
+Game_CharacterBase.prototype.hasActiveTag = function(tagName) {
+    for (var i = 0; i < this._spriter.tag.length; i++) {
+        if (this._spriter.tag[i].name == tagName) {
+            return true;
+        }
+    }
+    return false;
+};
+
+var spriter_alias_Game_CharacterBase_update = Game_CharacterBase.prototype.update;
+Game_CharacterBase.prototype.update = function() {
+	spriter_alias_Game_CharacterBase_update.call(this);
+	this.checkTags();
+};
+
+Game_CharacterBase.prototype.checkTags = function() {
+	if (this.hasOwnProperty("_spriter")) {
+		for (var i = 0; i < this._spriter.tag.length; i++) {
+
+			if (this._spriter.tag[i].name.includes("se,")) {
+				tagArray = this._spriter.tag[i].name.split(",");
+				params = {};
+				params.name = tagArray[1];
+				params.pan = tagArray[2];
+				params.pitch = tagArray[3];
+				params.volume = Number(tagArray[4]);
+                if (tagArray[5] === "true") {
+                    maxVolumeArea = Number(tagArray[6]);
+                    maxArea = Number(tagArray[7]);
+                    dx = Math.abs(this.x - $gamePlayer.x);
+                    dy = Math.abs(this.y - $gamePlayer.y);
+                    d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+                    if (d > maxVolumeArea && (d - maxVolumeArea) <= maxArea) {
+                        params.volume -= params.volume * (d - maxVolumeArea) / maxArea;
+                    }
+                    else if ((d - maxVolumeArea) > maxArea) {
+                        params.volume = 0;
+                    }
+                }
+    			AudioManager.playSe(params);
+			}
+            else if (this._spriter.tag[i].name.includes("ChildSprite,")) {
+                tagArray = this._spriter.tag[i].name.split(",");
+                params = {};
+                params.skinName = tagArray[1];
+                params.sprite = tagArray[2];
+                if (this.constructor == Game_Player) {
+                    command = "player" + tagArray[0];
+                    args = [];
+                    args[0] = tagArray[1];
+                    args[1] = tagArray[2];
+                }
+                else if (this.constructor == Game_Follower) {
+                    command = "follower" + tagArray[0];
+                    args = [];
+                    args[0] = this._memberIndex;
+                    args[1] = tagArray[1];
+                    args[2] = tagArray[2];
+                }
+                else if (this.constructor == Game_Event){
+                    command = "event" + tagArray[0];
+                    args = [];
+                    args[0] = this._eventId;
+                    args[1] = tagArray[1];
+                    args[2] = tagArray[2];
+                }
+                $gameInterp = new Game_Interpreter();
+                $gameInterp.pluginCommand(command, args);
+            }
+            else if (this._spriter.tag[i].name.includes("SkinPart,")) {
+                tagArray = this._spriter.tag[i].name.split(",");
+                params = {};
+                params.skinName = tagArray[1];
+                params.sprite = tagArray[2];
+                if (this.constructor == Game_Player) {
+                    command = "player" + tagArray[0];
+                    args = [];
+                    args[0] = tagArray[1];
+                    args[1] = tagArray[2];
+                    args[2] = tagArray[3];
+                }
+                else if (this.constructor == Game_Follower) {
+                    command = "follower" + tagArray[0];
+                    args = [];
+                    args[0] = this._memberIndex;
+                    args[1] = tagArray[1];
+                    args[2] = tagArray[2];
+                    args[3] = tagArray[3];
+                }
+                else if (this.constructor == Game_Event){
+                    command = "event" + tagArray[0];
+                    args = [];
+                    args[0] = this._eventId;
+                    args[1] = tagArray[1];
+                    args[2] = tagArray[2];
+                    args[3] = tagArray[3];
+                }
+                $gameInterp = new Game_Interpreter();
+                $gameInterp.pluginCommand(command, args);
+            }
+		}
+	}
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -2994,13 +3273,3 @@ Graphics.render = function(stage) {
 
   oldGraphicsRender.call(Graphics, this._realStage);
 };
-
-/*
-reverse
-freeze becomes invisible at times
-smooth
-careful of scales
-add spriter_characters as children
-bezier curves
-masks
-*/
