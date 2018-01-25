@@ -21,6 +21,10 @@
  * @param Show Frames
  * @desc Display the Animation Frames (true or false).
  * @default false 
+ * 
+ * @param Evaluate Parameters
+ * @desc Use variables in plugin commands by adding "variable_" in front of the variable (true or false).
+ * @default false 
  *
  * @help 
  *
@@ -95,6 +99,8 @@
  * WARNING: 01/24/2018 THERE IS A PIXI.JS BUG IN v4.5.4 THAT MAKES MASKS NOT WORK IF THE MAP HAS TILES. 
  *
  * [7] Animations play when 1) an actor/event has walking animation on and is moving, or 2) an actor/event has stepping animation on.
+ *
+ * [8] Animations that are supposed to loop (walking animations, rolling balls, etc.) you need to toggle the Repeat Playback button in the Spriter Pro timeline.
  *
  * Plugin Commands:
  * [1] eventSkeleton eventId data/animations/skeleton Spriter/skinsetName                                     (Changes skeleton. Since skeleton changes, skinset needs to change as well.)
@@ -189,6 +195,7 @@
   var spriterVarId = parseInt(parameters['Storing Variable'] || 7);
   var showSkeleton = eval(parameters['Show Skeleton'] || false);
   var showFrames = eval(parameters['Show Frames'] || false);
+  var evaluateParameters = eval(parameters['Evaluate Parameters'] || false);
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -2232,9 +2239,29 @@ function getFiles (dir){
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
+var spriter_alias_game_interpreter_command356 = Game_Interpreter.prototype.command356;
+Game_Interpreter.prototype.command356 = function() {
+	if (evaluateParameters) {
+		var args = this._params[0].split(" ");
+	    for (var i = 1; i < args.length; i++) {
+	    	if (args[i].contains("var_")) {
+	    		args[i] = eval(args[i].replace("var_",""));
+	    	}
+	    }
+	    var command = args.shift();
+	    this.pluginCommand(command, args);
+	    return true;
+	}
+	else {
+		spriter_alias_game_interpreter_command356.call(this);
+	}
+};
+
+// Plugin Commands
+
 var spriter_alias_game_interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function(command, args) {
-    spriter_alias_game_interpreter_pluginCommand.apply(this);
+    spriter_alias_game_interpreter_pluginCommand.call(this, command, args);
 
     //-------------------------------------------------------------------------------------------------------------     
     // Events
