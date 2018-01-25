@@ -23,7 +23,7 @@
  * @default false 
  * 
  * @param Evaluate Parameters
- * @desc Use variables in plugin commands by adding "variable_" in front of the variable (true or false).
+ * @desc Use variables in plugin commands by adding "var_" in front of the variable (true or false).
  * @default false 
  *
  * @help 
