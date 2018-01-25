@@ -285,20 +285,20 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
     	}
 	}
     var globalInfo = this.getCharacterGlobalInfo(character);
-    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton : null;
-    character._spriter._skin = visible ? globalInfo._skin || notes._skin : null;
+    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
+    character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
     character._spriter._skinParts = globalInfo._skinParts || [];
     character._spriter._spriteChildren = globalInfo._spriteChildren || [];
-    character._spriter._speed = globalInfo._speed || notes._speed;
-    character._spriter._cellX = notes._cellX;
-    character._spriter._cellY = notes._cellY;
+    character._spriter._speed = globalInfo._speed || notes._speed.trim();
+    character._spriter._cellX = notes._cellX.trim();
+    character._spriter._cellY = notes._cellY.trim();
     character._spriter._stop = globalInfo._stop || false;
-    character._spriter._spriteMask.available = eval(notes._spriteMask);
+    character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
     if (character._spriter._spriteMask.available) {
-    	character._spriter._spriteMask.x = notes._spriteMaskX;
-    	character._spriter._spriteMask.y = notes._spriteMaskY;
-    	character._spriter._spriteMask.w = notes._spriteMaskW;
-    	character._spriter._spriteMask.h = notes._spriteMaskH;
+    	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
+    	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
+    	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
+    	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
     }
 };
 
