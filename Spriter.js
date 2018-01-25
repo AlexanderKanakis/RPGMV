@@ -1695,7 +1695,7 @@ Spriter_Character.prototype.storeToGlobal = function(item) {
         var name = String(this._character._name);
         characterGlobal = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
     }
-    characterGlobal.dir = this._character_direction;
+    characterGlobal.dir = this._character._direction;
     if (item.type === "bone") {
         var bone = characterGlobal.bones[item.type + "_" + String(item.timelineId)];
         bone.x = item.x;
@@ -2254,6 +2254,7 @@ Game_Interpreter.prototype.command356 = function() {
 	}
 	else {
 		spriter_alias_game_interpreter_command356.call(this);
+        return true;
 	}
 };
 
