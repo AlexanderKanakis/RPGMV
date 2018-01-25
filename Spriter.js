@@ -2250,12 +2250,11 @@ Game_Interpreter.prototype.command356 = function() {
 	    }
 	    var command = args.shift();
 	    this.pluginCommand(command, args);
-	    return true;
 	}
 	else {
 		spriter_alias_game_interpreter_command356.call(this);
-        return true;
 	}
+    return true;
 };
 
 // Plugin Commands
