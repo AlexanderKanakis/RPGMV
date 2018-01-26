@@ -43,7 +43,7 @@
  * Installation:
  * [1] Paste js file in js/plugins/
  * [2] Create path img/characters/Spriter/ and inside Spriter, a folder named Single Bitmaps.
- * [3] Create file SpriterObjects.json in data/ or copy the one from the demo.
+ * [3] Paste SpriterObjects.json in data/ or copy the one from the demo.
  * [4] Create path data/animations/.
  * [5] Enable the plugin from the Plugin Manager and assign a number for the variable which will store animation info.
  *     WARNING: Do not modify that variable after activating the plugin.
@@ -53,7 +53,9 @@
  * [1] The plugin should work as expected in most regards (please check "Future Updates/Fixes" for more information).
  * [2] The first 4 animations in a Spriter project will respond to the character's 4 directions. If you want your character
  *     to move without Direction Fix, you have to create at least 4 animations.
- * [3] Spriter might face some problems with its documentation, so if something inexplicably does not work, try redoing the animation.
+ * [3] While you can change the pivot of your bitmaps when you have inserted them into your project, you must not edit pivot x 
+ *     and pivot y in Edit Image's Default Pivot 
+ * [4] Spriter might face some problems with its documentation, so if something inexplicably does not work, try redoing the animation.
  *     If that does not fix your problem, feel free to contact the plugin creator.
  *
  * Plugin Operation:
@@ -62,6 +64,7 @@
  *     Example: Folder_1: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_2: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_3: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_4: [head,torso,r_arm,_r_leg,_l_arm,l_leg] 
  * [3] Inside the Skinset folder, create the folders with the bitmaps you used for the animation.
  * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors) you need to create them in the SpriterObjects.json file in your data folder.
+ *     (See more info about SpriterObjects.json in About SpriterObjects.json).
  * [5] To create a Spriter Sprite for actors, go to Tools -> Database and write this on the actors' notes:
  *     <Spriter:>
  *     <_skeleton: The file name of the animation you want to choose from data/animations/>
@@ -101,6 +104,16 @@
  * [7] Animations play when 1) an actor/event has walking animation on and is moving, or 2) an actor/event has stepping animation on.
  *
  * [8] Animations that are supposed to loop (walking animations, rolling balls, etc.) you need to toggle the Repeat Playback button in the Spriter Pro timeline.
+ *
+ * About SpriterObjects.json:
+ * Much like the MV Sprite_Character class, Spriter_Character class looks for data in the actor/event object in order to create/update a sprite. But what happens 
+ * when we want our character to hold an animated sprite? A sprite whose animation is separate from the animation of its parent? Like a torch, or a magic aura. 
+ * And what do we do when we want to keep these sprites for multiple maps?
+ * That's why we create SpriterObjects!
+ * In SpriterObjects we create faux game objects, with just the bare minimum data to satisfy the needs of the Spriter_Character class. You create a new object, 
+ * you give it a name, skeleton, skin and then you can attach it to any character you want!
+ *
+ * Example: https://i.imgur.com/dPLSF3W.png, or the SpriterObjects.json file in the demo.
  *
  * Plugin Commands:
  * [1] eventSkeleton eventId data/animations/skeleton Spriter/skinsetName                                     (Changes skeleton. Since skeleton changes, skinset needs to change as well.)
