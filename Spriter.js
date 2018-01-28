@@ -2274,8 +2274,8 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
         event._skeleton = args[1];
         event._skin = args[2];
-        eventGlobalInfo._skeleton = arga[1];
-        eventGlobalInfo._skin = arga[2];
+        eventGlobalInfo._skeleton = args[1];
+        eventGlobalInfo._skin = args[2];
         event._skinParts = [];
         eventGlobalInfo._skinParts = [];
     }
