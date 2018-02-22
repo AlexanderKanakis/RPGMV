@@ -1,7 +1,7 @@
 //=============================================================================
 // Spriter Pro Plugin
 // by KanaX
-// version 1.0
+// version 1.1
 // Last Update: 2018.01.24
 //=============================================================================
 
@@ -16,15 +16,22 @@
  * 
  * @param Show Skeleton
  * @desc Display the Animation Skeleton (true or false).
- * @default false 
+ * @type boolean
+ * @on Enabled
+ * @off Disabled 
  *
  * @param Show Frames
  * @desc Display the Animation Frames (true or false).
- * @default false 
+ * @type boolean
+ * @on Enabled
+ * @off Disabled 
  * 
  * @param Evaluate Parameters
  * @desc Use variables in plugin commands by adding "var_" in front of the variable (true or false).
- * @default false 
+ * @default false
+ * @type boolean
+ * @on Enabled
+ * @off Disabled 
  *
  * @help 
  *
@@ -43,7 +50,7 @@
  * Installation:
  * [1] Paste js file in js/plugins/
  * [2] Create path img/characters/Spriter/ and inside Spriter, a folder named Single Bitmaps.
- * [3] Create file SpriterObjects.json in data/ or copy the one from the demo.
+ * [3] Paste SpriterObjects.json in data/ or copy the one from the demo.
  * [4] Create path data/animations/.
  * [5] Enable the plugin from the Plugin Manager and assign a number for the variable which will store animation info.
  *     WARNING: Do not modify that variable after activating the plugin.
@@ -53,7 +60,9 @@
  * [1] The plugin should work as expected in most regards (please check "Future Updates/Fixes" for more information).
  * [2] The first 4 animations in a Spriter project will respond to the character's 4 directions. If you want your character
  *     to move without Direction Fix, you have to create at least 4 animations.
- * [3] Spriter might face some problems with its documentation, so if something inexplicably does not work, try redoing the animation.
+ * [3] While you can change the pivot of your bitmaps when you have inserted them into your project, you must not edit pivot x 
+ *     and pivot y in Edit Image's Default Pivot 
+ * [4] Spriter might face some problems with its documentation, so if something inexplicably does not work, try redoing the animation.
  *     If that does not fix your problem, feel free to contact the plugin creator.
  *
  * Plugin Operation:
@@ -62,6 +71,7 @@
  *     Example: Folder_1: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_2: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_3: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_4: [head,torso,r_arm,_r_leg,_l_arm,l_leg] 
  * [3] Inside the Skinset folder, create the folders with the bitmaps you used for the animation.
  * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors) you need to create them in the SpriterObjects.json file in your data folder.
+ *     (See more info about SpriterObjects.json in About SpriterObjects.json).
  * [5] To create a Spriter Sprite for actors, go to Tools -> Database and write this on the actors' notes:
  *     <Spriter:>
  *     <_skeleton: The file name of the animation you want to choose from data/animations/>
@@ -101,6 +111,16 @@
  * [7] Animations play when 1) an actor/event has walking animation on and is moving, or 2) an actor/event has stepping animation on.
  *
  * [8] Animations that are supposed to loop (walking animations, rolling balls, etc.) you need to toggle the Repeat Playback button in the Spriter Pro timeline.
+ *
+ * About SpriterObjects.json:
+ * Much like the MV Sprite_Character class, Spriter_Character class looks for data in the actor/event object in order to create/update a sprite. But what happens 
+ * when we want our character to hold an animated sprite? A sprite whose animation is separate from the animation of its parent? Like a torch, or a magic aura. 
+ * And what do we do when we want to keep these sprites for multiple maps?
+ * That's why we create SpriterObjects!
+ * In SpriterObjects we create faux game objects, with just the bare minimum data to satisfy the needs of the Spriter_Character class. You create a new object, 
+ * you give it a name, skeleton, skin and then you can attach it to any character you want!
+ *
+ * Example: https://i.imgur.com/dPLSF3W.png, or the SpriterObjects.json file in the demo.
  *
  * Plugin Commands:
  * [1] eventSkeleton eventId data/animations/skeleton Spriter/skinsetName                                     (Changes skeleton. Since skeleton changes, skinset needs to change as well.)
@@ -177,7 +197,7 @@
  *
  * ----------------------------------------------------------------------------
  * Revisions
- *
+ * 02/22/2018: Updated for MV version 1.6
  * ----------------------------------------------------------------------------
  *
  * ----------------------------------------------------------------------------
@@ -218,6 +238,7 @@ Game_CharacterBase.prototype.initMembers = function() {
     this._spriter.tag = [];
     this._spriter.var = {};
     this._spriter._spriteMask = {};
+    this._spriter._showSkeleton = false;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -676,7 +697,6 @@ Spriter_Character.prototype.setCharacter = function(character) {
         this._globalAnimationInfo.var = {};
     }
     if (this._character._direction == this._globalAnimationInfo.dir) {
-        console.log("in");
         this._animationFrame = this._globalAnimationInfo.frame || 0;
         this._key = this._globalAnimationInfo.key || 0;        
     }
@@ -749,6 +769,10 @@ Spriter_Character.prototype.initSprite = function() {
         this.addChild(myMask);
         this.mask = myMask;
     }
+    this.scale.x = 2;
+    this.scale.y = 2;
+    this._character._spriter._sizeX = this.scale.x;
+    this._character._spriter._sizeY = this.scale.y;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -991,7 +1015,6 @@ Spriter_Character.prototype.checkChanges = function() {
         // Resetting the whole Sprite
     	this._skeleton = this._character._spriter._skeleton;
         this._skin = this._character._spriter._skin;
-        console.log(this._skin);
         this._animationFrame = 0;
         this._key = 0;
         this._globalAnimationInfo.key = this._key; 
@@ -1439,13 +1462,15 @@ Spriter_Character.prototype.updateBitmaps = function (item) {
 	}
 	// Bone Bitmaps / Skeleton Display
 	else {
-	    if (showSkeleton) {
+	    if (showSkeleton || this._character._spriter._showSkeleton) {
 	        var boneId = Number(this._pathTime[item.timelineId].obj);
 	        var w = Number(this._animation.entity.obj_info[boneId].w);
 	        var h = 4;
 	        item.bitmap = new Bitmap(w, h);
 	        item.bitmap.fillRect(0, -2, w, h, 'black');
 	        item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
+            item.bitmap = new Bitmap();
+            item.bitmap.fillAll("black");
 
     	}
 	}
@@ -2023,9 +2048,9 @@ function setSpriterData(data, name){
 function createAnimationGlobal(data, name){
     obj2Arr(data);
     $spriterAnimations[name] = data;
-    console.log(name);
-    console.log(data);
-    console.log('-----------------');
+    // console.log(name);
+    // console.log(data);
+    // console.log('-----------------');
 }
 
 //-------------------------------------------------------------------------------------------------------------     
@@ -2273,11 +2298,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
         event._skeleton = args[1];
-        event._skin = args[2];
-        eventGlobalInfo._skeleton = args[1];
-        eventGlobalInfo._skin = args[2];
-        event._skinParts = [];
-        eventGlobalInfo._skinParts = [];
+        eventGlobalInfo._skeleton = event._skeleton;
     }
     else if (command === "eventSkin") {
         event = $gameMap.event(args[0])._spriter;
@@ -2413,18 +2434,12 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     else if (command === "playerSkeleton") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         $gamePlayer._spriter._skeleton = args[0];
-        $gamePlayer._spriter._skin = args[1];
         playerGlobalInfo._skeleton = args[0];
-        playerGlobalInfo._skin = args[1];
-        $gamePlayer._spriter._skinParts = [];
-        playerGlobalInfo._skinParts = [];
     }
     else if (command === "playerSkin") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         $gamePlayer._spriter._skin = args[0];
         playerGlobalInfo._skin = args[0];
-        $gamePlayer._spriter._skinParts = [];
-        playerGlobalInfo._skinParts = [];
     }
     else if (command === "playerSpeed") {
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
@@ -2531,18 +2546,14 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skeleton = args[1];
-        follower._skeleton = args[2];
-        followerGlobalInfo._skeleton = args[1];
-        followerGlobalInfo._skin = args[2];
-        follower._skinParts = [];
-        followerGlobalInfo._skinParts = [];
+        followerGlobalInfo._skeleton = follower._skeleton;
     }
     else if (command === "followerSkin") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skin = args[1];
-        followerGlobalInfo._skin = follower._skin;
         follower._skinParts = [];
+        followerGlobalInfo._skin = follower._skin;
         followerGlobalInfo._skinParts = [];
     }
     else if (command === "followerSpeed") {
@@ -2723,8 +2734,7 @@ Game_CharacterBase.prototype.checkTags = function() {
                     args[1] = tagArray[1];
                     args[2] = tagArray[2];
                 }
-                $gameInterp = new Game_Interpreter();
-                $gameInterp.pluginCommand(command, args);
+                $gameMap._interpreter.pluginCommand(command, args);
             }
             else if (this._spriter.tag[i].name.includes("SkinPart,")) {
                 tagArray = this._spriter.tag[i].name.split(",");
@@ -2754,8 +2764,7 @@ Game_CharacterBase.prototype.checkTags = function() {
                     args[2] = tagArray[2];
                     args[3] = tagArray[3];
                 }
-                $gameInterp = new Game_Interpreter();
-                $gameInterp.pluginCommand(command, args);
+                $gameMap._interpreter.pluginCommand(command, args);
             }
 		}
 	}
@@ -3315,4 +3324,26 @@ Graphics.render = function(stage) {
   }
 
   oldGraphicsRender.call(Graphics, this._realStage);
+};
+
+//-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Fix For SubFolders
+//*************************************************************************************************************
+//-------------------------------------------------------------------------------------------------------------
+
+ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
+    if (filename) {
+        var folderPath = filename.split('/');
+        for (var i = 0; i < folderPath.length - 1; i++) {
+            folder += folderPath[i] + '/';
+        }
+        filename = folderPath[folderPath.length - 1];
+        var path = folder + encodeURIComponent(filename) + '.png';
+        var bitmap = this.loadNormalBitmap(path, hue || 0);
+        bitmap.smooth = smooth;
+        return bitmap;
+    } else {
+        return this.loadEmptyBitmap();
+    }
 };
