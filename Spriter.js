@@ -769,8 +769,6 @@ Spriter_Character.prototype.initSprite = function() {
         this.addChild(myMask);
         this.mask = myMask;
     }
-    this.scale.x = 2;
-    this.scale.y = 2;
     this._character._spriter._sizeX = this.scale.x;
     this._character._spriter._sizeY = this.scale.y;
 };
@@ -976,7 +974,7 @@ Spriter_Character.prototype.updateSprite = function() {
 
             // Character movement stops after the completion of a step
             // this._resetter resets the animation if !this._character.isMoving() for more that one update loop.
-            if (this._resetter === true) {
+            if (this._resetter) {
                 this._key = 0;
                 this._animationFrame = 0;
                 this._globalAnimationInfo.frame = 0;
