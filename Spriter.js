@@ -1,8 +1,8 @@
 //=============================================================================
 // Spriter Pro Plugin
 // by KanaX
-// version 1.1
-// Last Update: 2018.01.24
+// version 1.3
+// Last Update: 2018.03.18
 //=============================================================================
 
 /*:
@@ -32,6 +32,28 @@
  * @type boolean
  * @on Enabled
  * @off Disabled 
+ *
+ * @param Log Animations
+ * @desc Print all animations in the data/animations folder.
+ * @default false
+ * @type boolean
+ * @on Log
+ * @off Do not Log
+ *
+ * @param TexturePacker Folder Character
+ * @desc The character/s you use on folders containing TexturePacker spritesheets.
+ * @default $
+ *
+ * @param Limit Process Check
+ * @desc Limits the amount of times certain processes are run. Limits processing power needed for plugin to run.
+ * @default false
+ * @type boolean
+ * @on Enabled
+ * @off Disabled
+ *
+ * @param Limit Frame Counter
+ * @desc If Limit Process Check is On, determine in how many frames a Spriter Sprite will be updating.
+ * @default 1
  *
  * @help 
  *
@@ -70,6 +92,7 @@
  * [2] Create a folder in img/character/Spriter/, named after the Skinset. The Skinset folder should have 4 folder which each taking the parts for each direction.
  *     Example: Folder_1: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_2: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_3: [head,torso,r_arm,_r_leg,_l_arm,l_leg], Folder_4: [head,torso,r_arm,_r_leg,_l_arm,l_leg] 
  * [3] Inside the Skinset folder, create the folders with the bitmaps you used for the animation.
+ *     Note: If you want to use Texture Packer, just place the sprite sheet and json file inside the Skinset folder. Their names should be the same as the Skinset folder.
  * [4] If you want certain Spriter Sprites to appear globally across the game (such as animated armor and weapons for actors) you need to create them in the SpriterObjects.json file in your data folder.
  *     (See more info about SpriterObjects.json in About SpriterObjects.json).
  * [5] To create a Spriter Sprite for actors, go to Tools -> Database and write this on the actors' notes:
@@ -129,6 +152,9 @@
  * [2] eventSkin eventId Spriter/skinsetName                                                                  (Changes Skinset. Needs to be compatible with skeleton.)
  *     Example: eventSkin 1 male_2
  *
+ *     Note: Adding a "$" infront of Spriter/skinsetname will load the bitmap
+ *           from the respective TexturePacker bitmap, as long as it exists.
+ *
  * [3] eventStop eventId true/false                                                                           (Stops Animation.)
  *     Example: eventStop 1 true
 
@@ -140,7 +166,10 @@
  *                                                                                                            (if it is set to true then the user will have to use the desired spriteset path)
  *                                                                                                            (if it is set to false then the user will have to use the desired bitmap path from within the Single Bitmaps folder)
  *     Example1: eventSkinPart 1 hat Items/helmet true                                                        (helmet needs to be a folder with the same filename/location as the one of the previous bitmap)
- *     Example2: eventSkinPart 1 r_hand_weapon mace false                                                     (mace needs to be a bitmap inside the Single Bitmaps folder)
+ *     Example2: eventSkinPart 1 r_hand_weapon mace false 
+ *
+ *     Note: Adding a "$" infront of Spriter/skinsetname will load the bitmap
+ *           from the respective TexturePacker bitmap, as long as it exists.                                                    (mace needs to be a bitmap inside the Single Bitmaps folder)
  *
  * [6] eventRemoveSkinPart eventId imageName                                                                  (Removes Spriter/skinsetName bitmap from imageName)
  *     Example: eventRemoveSkinPart 1 r_hand_weapon 
@@ -198,13 +227,17 @@
  * ----------------------------------------------------------------------------
  * Revisions
  * 02/22/2018: Updated for MV version 1.6
+ * 03/18/2018: Added Bezier Curve Tweening for Animations
+ *             Added Instant Tweening for Animations
+ *             Added TexturePacker Support.
+ *             Added Paramaters to give Spriter Plugin better Performance.
  * ----------------------------------------------------------------------------
  *
  * ----------------------------------------------------------------------------
  * Future Updates/Fixes
  *
  * [1] Fix reverse animations (this._speed < 0).
- * [2] Utilize bezier lines for animation.
+ * [2] Add ability to distort texture meshes.
  * [3] Make functional masks after dealing with a pixi.js bug. 
  *
  * ----------------------------------------------------------------------------
@@ -216,6 +249,10 @@
   var showSkeleton = eval(parameters['Show Skeleton'] || false);
   var showFrames = eval(parameters['Show Frames'] || false);
   var evaluateParameters = eval(parameters['Evaluate Parameters'] || false);
+  var logAnimations = eval(parameters['Log Animations'] || false);
+  var texturePackerCharacter = parameters['TexturePacker Folder Character'] || "$";
+  var limitProcessCheck = eval(parameters['Limit Process Check'] || false);
+  var limitCounter = parameters['Limit Frame Counter'] || "1";
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -437,17 +474,20 @@ Spriteset_Map.prototype.createCharacters = function() {
 
 Spriteset_Map.prototype.createSpriterCharacters = function() {
 	this._spriterCharacterSprites = [];
+
 	// Creating Spriter Event
     $gameMap.events().forEach(function(event) {
 		if (this.hasSpriterSprite(event)) {
 			this._spriterCharacterSprites.push(new Spriter_Character(event));
 	    }
     }, this);
+
     // Creating Spriter Player
     var playerNotes = $dataActors[$gameParty.leader()._actorId].meta;
     if (playerNotes.hasOwnProperty("Spriter")) {
         this._spriterCharacterSprites.push(new Spriter_Character($gamePlayer));
     } 
+
     // Creating Spriter Followers
     $gamePlayer.followers().reverseEach(function(follower) {
     	if (follower.actor() && this.hasSpriterSprite(follower)) {
@@ -639,6 +679,7 @@ Spriter_Character.prototype.initMembers = function() {
     this._recovery = "snap";
     this._globalAnimationInfo = null;
     this._spriteMask = {};
+    this._limitCounter = 0;
 };
 
 Spriter_Character.prototype.setCharacter = function(character) {
@@ -922,7 +963,7 @@ Spriter_Character.prototype.updateDisplay = function() {
     if (showFrames) {
         this._infoDisplaySprite.bitmap.clear();
         this._infoDisplaySprite.bitmap.drawText("key: " + this._key, 0, 10, 100, 1, 'left');
-        this._infoDisplaySprite.bitmap.drawText("frame: " + String(this._animationFrame), 0, 25, 100, 1, 'left');
+        this._infoDisplaySprite.bitmap.drawText("frame: " + String(Math.round(this._animationFrame)), 0, 25, 100, 1, 'left');
     }
 };
 
@@ -931,6 +972,7 @@ Spriter_Character.prototype.updateDisplay = function() {
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.updateDirection = function() {
     if ((this._character._direction - 2) / 2 != this._animationId && !this._stop){
+        this._character._spriter.forceUpdate = true;
         this._animationId = (this._character._direction - 2) / 2;
         this._animationFrame = 0;
         this._key = 0;
@@ -961,9 +1003,17 @@ Spriter_Character.prototype.updateDirection = function() {
 //------------------------------------------------------------------------------------------------------------- 
 Spriter_Character.prototype.updateSprite = function() {
     if (!this._stop) {
-    	this.checkChanges();
-        this.setCharacterSprite();
-        this.updateTagsAndVars();
+        if (!limitProcessCheck || this._limitCounter === 0) {
+    	    this.checkChanges();
+            this.setCharacterSprite();
+            this.updateTagsAndVars();
+        }
+        if (this._limitCounter == limitCounter) {
+            this._limitCounter = 0;
+        }
+        else {
+            this._limitCounter++;
+        }
         if (this.isMoving(this._character)) {
             this._resetter = false;
             this.updateFrame();
@@ -1011,6 +1061,7 @@ Spriter_Character.prototype.checkChanges = function() {
 
     if (this._skeleton !== this._character._spriter._skeleton) {
         // Resetting the whole Sprite
+        this._character._spriter.forceUpdate = true;
     	this._skeleton = this._character._spriter._skeleton;
         this._skin = this._character._spriter._skin;
         this._animationFrame = 0;
@@ -1161,13 +1212,13 @@ Spriter_Character.prototype.updateFrame = function() {
 
             // If animationFrame is 0 and Animation repeats, then animationFrame = Animation Length
     		if (this._animationFrame === 0 && this._repeat) {
-                this._animationFrame = this._animLength;
+                this._animationFrame = this._animLength;        
             }
             // If animationFrame is smaller than 0 and Animation repeats  animationFrame = Animation Length
             else if (this._animationFrame + speed < 0 && this._repeat) {
                 this._animationFrame = this._animLength;
             }
-            else if (this._animationFrame + this._speed <= lastKeyTime && this._repeat) {
+            else if (this._animationFrame + speed <= lastKeyTime && this._repeat) {
             	this._key = this._pathMain.length - 1; 
                 this._animationFrame = lastKeyTime;
             }
@@ -1215,6 +1266,11 @@ Spriter_Character.prototype.setCharacterSprite = function() {
             this.setUpdateType(item);
         }
     }
+
+    if (this._character._spriter.forceUpdate) {
+        this._character._spriter.forceUpdate = false;
+    }
+
     this.refreshSprite();
 };
 
@@ -1236,16 +1292,16 @@ Spriter_Character.prototype.refreshSprite = function() {
 // Determines if animation frame is in item's Key, or between Keys. 
 Spriter_Character.prototype.setUpdateType = function(item) {
     if (this._animationFrame == item.currentKeyTime) {
-        this.keyUpdate(item);
+        this.setOnKey(item);
     }
     else if (!this._repeat && this._animationFrame > item.lastKeyTime && this.isAnimated(item)) {
-        this.keyUpdate(item);
+        this.setOnKey(item);
     }
     else if (!this.isAnimated(item)) {
-        this.keyUpdate(item);
+        this.setOnKey(item);
     }
     else if (this.isBetweenKeys(item) && this.isMoving(this._character) && this.isAnimated(item)) {
-        this.midKeyUpdate(item);
+        this.tween(item);
     }
 };
 
@@ -1320,6 +1376,7 @@ Spriter_Character.prototype.getNextKey = function(item) {
 			return item.key - 1;
 		}
 	}
+
 };
 
 // Checks if item has more than one Key (has change in values, ergo, animation)
@@ -1360,7 +1417,7 @@ Spriter_Character.prototype.isBetweenKeys = function(item) {
 //-------------------------------------------------------------------------------------------------------------
 // Updates item according to key info.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.keyUpdate = function(item) {
+Spriter_Character.prototype.setOnKey = function(item) {
     var globals = this._globalAnimationInfo;
     if (item.type === "bone") {
     	if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
@@ -1374,8 +1431,6 @@ Spriter_Character.prototype.keyUpdate = function(item) {
 	}
 
     var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
-
-   	this.updateBitmaps(item);
 
     // General Values ------------------------------------
 
@@ -1395,6 +1450,9 @@ Spriter_Character.prototype.keyUpdate = function(item) {
     item.scale.y = sy;
 
     // ---------------------------------------------------
+
+    this.updateBitmaps(item);
+
 
     // Object-specific Values ----------------------------
     if (item.type === "object") {
@@ -1438,25 +1496,33 @@ Spriter_Character.prototype.updateBitmaps = function (item) {
 	    var skinParts = this._skinParts;
         var path = "Spriter/"+ skin + "/" + fileName;
 
-	    // Check for Skin Parts
-	    for (var j = 0; j < skinParts.length; j++){
-	        if (skinParts[j].skinName == timelineName) {
+        // Check for Skin Parts
+        for (var j = 0; j < skinParts.length; j++){
+            if (skinParts[j].skinName == timelineName) {
 
                 // If Sprite Change is a Full Sprite, then redirect to another Skinset
                 if (skinParts[j].fullSprite) {
+                    skin = skinParts[j].skinSet;
                     path = "Spriter/"+ skinParts[j].skinSet + "/" + fileName;
                 }
 
                 // If not, then replace with an imagee from Single Bitmaps
                 else {
+                    skin = "Single Bitmaps";
                     path = "Spriter/Single Bitmaps/" + skinParts[j].skinSet;
+                    fileName = skinParts[j].skinSet;
                 }
-	            break;
-	        }
-	    }
+                break;
+            }
+        }
 
-	    // Set Bitmap
-	    item.bitmap = ImageManager.loadCharacter(path);
+        // Set Bitmap
+        if (this.bitmapIsPacked(path)) {
+            this.unpackBitmap(item, skin, fileName);
+        }
+        else {
+            item.bitmap = ImageManager.loadCharacter(path);
+        }
 	}
 	// Bone Bitmaps / Skeleton Display
 	else {
@@ -1467,12 +1533,40 @@ Spriter_Character.prototype.updateBitmaps = function (item) {
 	        item.bitmap = new Bitmap(w, h);
 	        item.bitmap.fillRect(0, -2, w, h, 'black');
 	        item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
-            item.bitmap = new Bitmap();
-            item.bitmap.fillAll("black");
-
     	}
 	}
 
+};
+
+Spriter_Character.prototype.bitmapIsPacked = function (path) {
+    return path.contains(texturePackerCharacter);
+};
+
+var r = 0;
+
+Spriter_Character.prototype.unpackBitmap = function (item, skin, fileName) {
+    fileName = fileName.replace(texturePackerCharacter, "");
+    skin = skin.replace(texturePackerCharacter, "");
+    var skinArr = skin.split("/")
+    var name = skinArr[skinArr.length-1];
+    var src = ImageManager.loadCharacter("Spriter/"+ skin + "/"  + name);
+    var packerData = $texturePacker[name];
+    var frame = packerData.frames[fileName + ".png"].frame;
+    var source = packerData.frames[fileName + ".png"].spriteSourceSize;
+    var sourceSize = packerData.frames[fileName + ".png"].sourceSize;
+    var isRotated = packerData.frames[fileName + ".png"].rotated;
+    if (!item.bitmap) {
+        item.bitmap = new Bitmap(sourceSize.w, sourceSize.h);
+    }
+    else {
+        item.bitmap.clear();
+    }
+    if (isRotated) {
+        item.bitmap.bltRotate(src, frame.x, frame.y, frame.h, frame.w, source.x, source.y, -90, source.h, source.w);
+    }
+    else {
+        item.bitmap.bltImage(src,frame.x,frame.y,frame.w,frame.h,source.x,source.y,source.w,source.h);
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1565,7 +1659,7 @@ Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
 // Difference in value between two keys is divided with the difference in time between two keys.
 // The fraction is added to the previous frame value.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.midKeyUpdate = function(item) {
+Spriter_Character.prototype.tween = function(item) {
 
     // Reset Global Value
     var globals = this._globalAnimationInfo;
@@ -1624,29 +1718,15 @@ Spriter_Character.prototype.midKeyUpdate = function(item) {
     var nsy = nElement.scale_y || 1;
     nsy = Number(nsy);
 
-    // forceUpdate is True when when the player uses a plugin command to change Bitmaps 
-    this.updateBitmaps(item);
-    if (item.type ==="object") {
-        // Getting Object Values for Key
-        var folderId = Number(pElement.folder);
-        var fileId = Number(pElement.file);
-        var w = Number(this._animation.folder[folderId].file[fileId].width);
-        var h = Number(this._animation.folder[folderId].file[fileId].height);
-        this.controlChildSprites(item.timelineId, w, h);
-    }
-
     //Determining Spin
     var spin = this._speed > 0 ? (Number(item.currentKey.spin) || 1) : -(Number(item.nextKey.spin) || 1);
     var dr;
 
     if (spin == -1 && nr > pr) {
-        dr = nr - pr - 360;
+        nr -= 360;
     }
     else if (spin == 1 && nr < pr) {
-        dr = nr - pr + 360;
-    }
-    else {
-        dr = nr - pr;
+        nr += 360;
     }
 
     // Getting Previous Frame Values 
@@ -1655,40 +1735,79 @@ Spriter_Character.prototype.midKeyUpdate = function(item) {
     var br = item.rotation;
     var bsx = item.scale.x;
     var bsy = item.scale.y;
+        
+    var dt = Math.abs(this._animationFrame - pt);
+
+    if (this._pathMain[this._key].hasOwnProperty("curve_type")) {
+        var cType = this._pathMain[this._key].curve_type
+        if (cType == "bezier") {
+            var Bx = this._speed > 0 ? this._pathMain[this._key].c1 : this._pathMain[this._key].c3;
+            var By = this._speed > 0 ? this._pathMain[this._key].c2 : this._pathMain[this._key].c4;
+            var Cx = this._speed > 0 ? this._pathMain[this._key].c3 : this._pathMain[this._key].c1;
+            var Cy = this._speed > 0 ? this._pathMain[this._key].c4 : this._pathMain[this._key].c2;
+            var curve = new UnitBezier(Bx, By, Cx, Cy);
+            t0 = curve.solve(dt/Math.abs(nt - pt), UnitBezier.prototype.epsilon);
+            t1 = 1 - t0;
+        }
+        else if (cType == "instant") {
+            t0 = 1;
+            t1 = 0;
+        }
+    }
+    else {
+        t0 = dt/Math.abs(nt - pt);
+        t1 = 1 - t0;
+    }
 
     // Setting Bone Values for Current Frame
-    item.x = bx + ((nx - px) / t);
-    item.y = by + ((-ny + py) / t);
-    item.rotation = br + ((-dr / t) * Math.PI / 180);
-    item.scale.x = bsx + ((nsx - psx) / t);
-    item.scale.y = bsy + ((nsy - psy) / t);
+    item.x = (px * t1) + (nx * t0);
+    item.y = (-py * t1) + (-ny * t0);
+    item.rotation = ((-pr * t1) + (-nr * t0)) * (Math.PI / 180);
+    item.scale.x = (psx * t1) + (nsx * t0);
+    item.scale.y = (psy * t1) + (nsy * t0);
 
     // ---------------------------------------------------
 
     // Object-specific Values ----------------------------
     if (item.type === "object") {
 
-    	// Getting Previous Frame Values
-    	var a = item.alpha;
-   		
-   		//Getting Previous Key Object Values
-		var pa = (pElement.a) || 1;
-	    pa = Number(pa);
+        // Getting Previous Frame Values
+        var a = item.alpha;
+        
+        //Getting Previous Key Object Values
+        var pa = (pElement.a) || 1;
+        pa = Number(pa);
 
-   		//Getting Next Key Object Values
-		var na = (nElement.a) || 1;
-	    na = Number(na);
-	    var nax = Number(nElement.pivot_x) || 0;
-	    var nay = 1 - Number(nElement.pivot_y) || 0;
-	    var pax = Number(pElement.pivot_x) || 0;
-	    var pay = 1 - Number(pElement.pivot_y) || 0;
+        //Getting Next Key Object Values
+        var na = (nElement.a) || 1;
+        na = Number(na);
+        var nax = Number(nElement.pivot_x) || 0;
+        var nay = 1 - Number(nElement.pivot_y) || 0;
+        var pax = Number(pElement.pivot_x) || 0;
+        var pay = 1 - Number(pElement.pivot_y) || 0;
 
-    	// Setting Object Values for Current Frame
-	    item.alpha = a + ((na - pa) / t);
-	    if (this._speed < 0) {
-			item.anchor.x = nax;
-	  		item.anchor.y = nay;
-	    }
+        // Setting Object Values for Current Frame
+        item.alpha = (pa * t1) + (na * t0);
+        if (this._speed < 0) {
+            item.anchor.x = nax;
+            item.anchor.y = nay;
+        }
+    }
+
+    // this._character._spriter.forceUpdate is True when when the player uses a plugin command to change Bitmaps
+    if (this._character._spriter.forceUpdate || !limitProcessCheck) {
+        this.updateBitmaps(item);
+    } 
+
+    if (item.type ==="object") {
+        // Getting Object Values for Key
+        var folderId = Number(pElement.folder);
+        var fileId = Number(pElement.file);
+        var w = Number(this._animation.folder[folderId].file[fileId].width);
+        var h = Number(this._animation.folder[folderId].file[fileId].height);
+        if (this._character._spriter.forceUpdate) {
+            this.controlChildSprites(item.timelineId, w, h);
+        }
     }
 
     // ---------------------------------------------------
@@ -2004,17 +2123,68 @@ DataManager._databaseFiles.push(spriterObjects);
 //-------------------------------------------------------------------------------------------------------------
 
 var $spriterAnimations = {};
+var $texturePacker = {};
 
 var spriter_alias_Scene_Boot_create = Scene_Boot.prototype.create;
 Scene_Boot.prototype.create = function() {
     spriter_alias_Scene_Boot_create.call(this);
     this.loadSpriterAnimations();
+    this.loadTexturePackerJSONs("/img/characters/Spriter/");
 };
 
 Scene_Boot.prototype.loadSpriterAnimations = function(){
     var files = getFiles ("/data/animations/");
     for (var i = 0; i < files.length; i++){
         fetchSCMLFile('data/animations/' + files[i], setSpriterData, files[i]);
+    }
+};
+
+Scene_Boot.prototype.loadTexturePackerJSONs = function(dir) {
+    var mainFolder = this.getDirContents(dir);
+    for (var i = 0; i < mainFolder.length; i++) {
+        var path = dir + mainFolder[i];
+        if (mainFolder[i].slice(-5) === ".json") {
+            fetchJSONFile(path.substr(1), setTexturePackerData, mainFolder[i].replace(".json",""));
+        }
+        else if (this.isDirectory(path)) {
+            path = path + "/";
+            this.loadTexturePackerJSONs(path);
+        }
+    }
+};
+
+Scene_Boot.prototype.getDirContents = function(dir) {
+    var files = [];
+    var fs = require('fs');
+    var path = require('path');
+    var base = path.dirname(process.mainModule.filename);
+    fs.readdirSync(base+dir).forEach(function(file){
+        files.push(file);
+    });
+    return files;
+};
+
+Scene_Boot.prototype.isDirectory = function(path) {
+    var fs = require('fs');
+    var basePath = require('path');
+    var base = basePath.dirname(process.mainModule.filename);
+    try{
+        if (fs.lstatSync(base + path).isDirectory()) {
+            return true;  
+        }
+        else {
+            return false;
+        }
+    }
+    catch(e){
+        // Handle error
+        if(e.code == 'ENOENT'){
+            return false;
+        }
+        else {
+            return false;
+
+        }
     }
 };
 
@@ -2036,8 +2206,24 @@ function fetchSCMLFile(path, callback, name) {
     httpRequest.send(); 
 }
 
+function fetchJSONFile(path, callback, name) {
+    var httpRequest = new XMLHttpRequest();
+    httpRequest.onreadystatechange = function() {
+        if (httpRequest.readyState === 4) {
+            var data = JSON.parse(this.responseText);
+            if (callback) callback(data, name);
+        }
+    };
+    httpRequest.open('GET', path);
+    httpRequest.send(); 
+}
+
 function setSpriterData(data, name){
     createAnimationGlobal(data, name);
+}
+
+function setTexturePackerData(data, name){
+    createTexturePackerGlobal(data, name);
 }
 
 //-------------------------------------------------------------------------------------------------------------     
@@ -2046,9 +2232,20 @@ function setSpriterData(data, name){
 function createAnimationGlobal(data, name){
     obj2Arr(data);
     $spriterAnimations[name] = data;
-    // console.log(name);
-    // console.log(data);
-    // console.log('-----------------');
+    if (logAnimations) {
+        console.log(name);
+        console.log(data);
+        console.log('-----------------');
+    }
+}
+
+function createTexturePackerGlobal(data, name) {
+    $texturePacker[name] = data;
+    if (logAnimations) {
+        console.log(name);
+        console.log(data);
+        console.log('-----------------');
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------------     
@@ -2202,6 +2399,15 @@ function obj2Arr(data) {
             }
         }
     }
+
+    // atlas
+    if (data.hasOwnProperty("atlas")) {
+        if(data.atlas.i.constructor == Object) {
+            temp = data.atlas.i;
+            delete data.atlas.i;
+            data.atlas.i = [temp];
+        }
+    }
 }
 
 // Converts xml File to js Object
@@ -2300,6 +2506,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventSkin") {
         event = $gameMap.event(args[0])._spriter;
+        event.forceUpdate = true;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
@@ -2334,6 +2541,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventSkinPart") {
         event = $gameMap.event(args[0])._spriter;
+        event.forceUpdate = true;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
@@ -2359,6 +2567,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventRemoveSkinPart") {
         event = $gameMap.event(args[0])._spriter;
+        event.forceUpdate = true;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
@@ -2376,6 +2585,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventChildSprite") {
         event = $gameMap.event(args[0])._spriter;
+        event.forceUpdate = true;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
         eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
@@ -2404,6 +2614,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "eventRemoveChildSprite") {
         event = $gameMap.event(args[0])._spriter;
+        event.forceUpdate = true;
         a = {};
         a.skinName = args[1];
         a.sprite = args[2];
@@ -2435,6 +2646,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         playerGlobalInfo._skeleton = args[0];
     }
     else if (command === "playerSkin") {
+        $gamePlayer._spriter.forceUpdate = true;
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         $gamePlayer._spriter._skin = args[0];
         playerGlobalInfo._skin = args[0];
@@ -2455,6 +2667,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         playerGlobalInfo._recovery = args[0];
     }
     else if (command === "playerSkinPart") {
+        $gamePlayer._spriter.forceUpdate = true;
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         a = {};
         a.skinName = args[0];
@@ -2477,6 +2690,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
     }
     else if (command === "playerRemoveSkinPart") {
+        $gamePlayer._spriter.forceUpdate = true;
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         a = {};
         a.skinName = args[0];
@@ -2491,6 +2705,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
     }
     else if (command === "playerChildSprite") {
+        $gamePlayer._spriter.forceUpdate = true;
         playerGlobalInfo = $gameVariables._data[spriterVarId].player;
         a = {};
         a.skinName = args[0];
@@ -2515,6 +2730,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         $gameVariables._data[spriterVarId]._spriteRequests.push(a);
     }
     else if (command === "playerRemoveChildSprite") {
+        $gamePlayer._spriter.forceUpdate = true;
         a = {};
         a.skinName = args[0];
         a.sprite = args[1];
@@ -2542,12 +2758,14 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
 
     if (command === "followerSkeleton") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skeleton = args[1];
         followerGlobalInfo._skeleton = follower._skeleton;
     }
     else if (command === "followerSkin") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         follower._skin = args[1];
         follower._skinParts = [];
@@ -2574,6 +2792,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerSkinPart") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         a = {};
         a.skinName = args[1];
@@ -2597,6 +2816,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerRemoveSkinPart") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         a = {};
         a.skinName = args[1];
@@ -2612,6 +2832,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerChildSprite") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
         a = {};
         a.skinName = args[1];
@@ -2638,6 +2859,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerRemoveChildSprite") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
+        follower.forceUpdate = true;
         a = {};
         a.skinName = args[1];
         a.sprite = args[2];
@@ -3345,3 +3567,27 @@ ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
         return this.loadEmptyBitmap();
     }
 };
+
+//-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Rotate Bitmap
+//*************************************************************************************************************
+//-------------------------------------------------------------------------------------------------------------
+
+Bitmap.prototype.bltRotate = function(source, sx, sy, sw, sh, dx, dy, angle, dw, dh) {        
+    angle = angle || 0;        
+    dw = dw || sw;        
+    dh = dh || sh;        
+    if (sx >= 0 && sy >= 0 && sw > 0 && sh > 0 && dw > 0 && dh > 0 && sx + sw <= source.width && sy + sh <= source.height) {            
+        this._context.globalCompositeOperation = 'source-over';  
+        var offsetX = dx;            
+        var offsetY = dy;           
+        this._context.translate(offsetX, offsetY);            
+        this._context.rotate(angle * Math.PI/180);            
+        this._context.translate(-offsetX, -offsetY);            
+        this._context.drawImage(source._canvas, sx, sy, sw, sh, dx - dw, dy, dw, dh);            
+        this._context.setTransform(1, 0, 0, 1, 0, 0);            
+        this._setDirty();        
+    }    
+};
+
