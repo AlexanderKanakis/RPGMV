@@ -55,6 +55,14 @@
  * @desc If Limit Process Check is On, determine in how many frames a Spriter Sprite will be updating.
  * @default 1
  *
+ * @param Animations Folder
+ * @desc Folder where animations are kept.
+ * @default data/animations
+ *
+ * @param Spriter Sprites Folder
+ * @desc Folder where skinsets and single bitmaps are kept.
+ * @default img/characters/
+ *
  * @help 
  *
  * Contact: 
@@ -253,6 +261,8 @@
   var texturePackerCharacter = parameters['TexturePacker Folder Character'] || "$";
   var limitProcessCheck = eval(parameters['Limit Process Check'] || false);
   var limitCounter = parameters['Limit Frame Counter'] || "1";
+  var animFolder = parameters['Animations Folder'] || "data/animations/";
+  var spriteFolder = parameters['Spriter Sprite Folder'] || "img/characters/";
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -498,9 +508,7 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
     for (var j = 0; j < this._spriterCharacterSprites.length; j++) {
         this._tilemap.addChild(this._spriterCharacterSprites[j]);
     }
-    if ($gameVariables._data[spriterVarId]) {
-    	$gameVariables._data[spriterVarId]._spriterCharacterSprites = this._spriterCharacterSprites;
-    }
+
 };
 
 Spriteset_Map.prototype.createGlobalSpriterCharacters = function () {
@@ -591,8 +599,7 @@ Spriteset_Map.prototype.updateFollowers = function() {
 		            this._spriterCharacterSprites.push(new Spriter_Character(follower));
 		            var index = this._spriterCharacterSprites.length - 1;
 		            this._tilemap.addChild(this._spriterCharacterSprites[index]);
-		            $gameVariables._data[spriterVarId]._spriterCharacterSprites = this._spriterCharacterSprites;
-					$gameVariables._data[spriterVarId]._followerRequests = [];
+					     $gameVariables._data[spriterVarId]._followerRequests = [];
 
 		        }
     		}
@@ -1453,10 +1460,6 @@ Spriter_Character.prototype.setOnKey = function(item) {
 
     // ---------------------------------------------------
 
-    if (this._skeleton == "f") {
-      console.log(this._animationFrame);
-    }
-
     this.updateBitmaps(item);
 
 
@@ -1547,8 +1550,6 @@ Spriter_Character.prototype.bitmapIsPacked = function (path) {
     return path.contains(texturePackerCharacter);
 };
 
-var r = 0;
-
 Spriter_Character.prototype.unpackBitmap = function (item, skin, fileName) {
     fileName = fileName.replace(texturePackerCharacter, "");
     skin = skin.replace(texturePackerCharacter, "");
@@ -1559,8 +1560,7 @@ Spriter_Character.prototype.unpackBitmap = function (item, skin, fileName) {
     var source = packerData.frames[fileName].spriteSourceSize;
     var sourceSize = packerData.frames[fileName].sourceSize;
     var isRotated = packerData.frames[fileName].rotated;
-    var texture = $spriterTextures["/img/characters/Spriter/"+ skin + "/"  + name + ".png"];
-
+    var texture = $spriterTextures["/" + spriteFolder + "Spriter/" + skin + "/"  + name + ".png"];
     if (isRotated) {
       item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.h,frame.w));
       item.texture.rotate = 2;
@@ -2042,15 +2042,17 @@ var $spriterTextures = {}
 var spriter_alias_Scene_Boot_create = Scene_Boot.prototype.create;
 Scene_Boot.prototype.create = function() {
     spriter_alias_Scene_Boot_create.call(this);
-    this.loadSpriterAnimations();
-    this.loadTexturePackerJSONs("/img/characters/Spriter/");
-    this.loadTextures("/img/characters/Spriter/");
+    this.loadSpriterAnimations(animFolder);
+    this.loadTexturePackerJSONs("/" + spriteFolder + "Spriter/");
+    this.loadTextures("/" + spriteFolder + "Spriter/");
 };
 
-Scene_Boot.prototype.loadSpriterAnimations = function(){
-    var files = getFiles ("/data/animations/");
+Scene_Boot.prototype.loadSpriterAnimations = function(path){
+    var files = getFiles ("/" + path);
     for (var i = 0; i < files.length; i++){
-        fetchSCMLFile('data/animations/' + files[i], setSpriterData, files[i]);
+        if (!this.isDirectory("/" + path + files[i])) {
+          fetchSCMLFile(path + files[i], setSpriterData, files[i]);
+        }
     }
 };
 
@@ -2077,30 +2079,6 @@ Scene_Boot.prototype.getDirContents = function(dir) {
         files.push(file);
     });
     return files;
-};
-
-Scene_Boot.prototype.isDirectory = function(path) {
-    var fs = require('fs');
-    var basePath = require('path');
-    var base = basePath.dirname(process.mainModule.filename);
-    try{
-        if (fs.lstatSync(base + path).isDirectory()) {
-            return true;  
-        }
-        else {
-            return false;
-        }
-    }
-    catch(e){
-        // Handle error
-        if(e.code == 'ENOENT'){
-            return false;
-        }
-        else {
-            return false;
-
-        }
-    }
 };
 
 Scene_Boot.prototype.loadTextures = function(dir) {
@@ -2361,6 +2339,23 @@ function obj2Arr(data) {
                 temp = data.entity.animation[i].timeline[k].key;
                 delete data.entity.animation[i].timeline[k].key;
                 data.entity.animation[i].timeline[k].key = [temp];
+            }
+            if (data.entity.animation[i].timeline[k].hasOwnProperty('meta')) {
+              if (data.entity.animation[i].timeline[k].meta.hasOwnProperty('tagline')) {
+                if (data.entity.animation[i].timeline[k].meta.tagline.key.constructor == Object) {
+                  temp = data.entity.animation[i].timeline[k].meta.tagline.key;
+                  delete data.entity.animation[i].timeline[k].meta.tagline.key;
+                  data.entity.animation[i].timeline[k].meta.tagline.key = [temp];
+                }
+                
+                for (var l = 0; l < data.entity.animation[i].timeline[k].meta.tagline.key.length; l++) {
+                  if (data.entity.animation[i].timeline[k].meta.tagline.key[l].tag.constructor == Object) {
+                    temp = data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
+                    delete data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
+                    data.entity.animation[i].timeline[k].meta.tagline.key[l].tag = [temp];
+                  }
+                }
+              }
             }
         }
     }
@@ -3531,29 +3526,6 @@ ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
     } else {
         return this.loadEmptyBitmap();
     }
-};
-
-//-------------------------------------------------------------------------------------------------------------
-//*************************************************************************************************************
-// Rotate Bitmap
-//*************************************************************************************************************
-//-------------------------------------------------------------------------------------------------------------
-
-Bitmap.prototype.bltRotate = function(source, sx, sy, sw, sh, dx, dy, angle, dw, dh) {        
-    angle = angle || 0;        
-    dw = dw || sw;        
-    dh = dh || sh;        
-    if (sx >= 0 && sy >= 0 && sw > 0 && sh > 0 && dw > 0 && dh > 0 && sx + sw <= source.width && sy + sh <= source.height) {            
-        this._context.globalCompositeOperation = 'source-over';  
-        var offsetX = dx;            
-        var offsetY = dy;           
-        this._context.translate(offsetX, offsetY);            
-        this._context.rotate(angle * Math.PI/180);            
-        this._context.translate(-offsetX, -offsetY);            
-        this._context.drawImage(source._canvas, sx, sy, sw, sh, dx - dw, dy, dw, dh);            
-        this._context.setTransform(1, 0, 0, 1, 0, 0);            
-        this._setDirty();        
-    }    
 };
 
 //-------------------------------------------------------------------------------------------------------------
