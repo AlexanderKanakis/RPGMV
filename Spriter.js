@@ -677,12 +677,14 @@ Spriter_Character.prototype.initMembers = function() {
     this._globalAnimationInfo = null;
     this._spriteMask = {};
     this._limitCounter = 0;
+    this._spriteType = '';
 };
 
 Spriter_Character.prototype.setCharacter = function(character) {
 
     //Getting Character Meta
     this._character = character;
+    this._spriteType = this._character instanceof Game_CharacterBase ? 'character' : 'object';
     this._animationId = (character._direction - 2) / 2;
     this._skeleton = this._character._spriter._skeleton;
     this._skin = this._character._spriter._skin;
@@ -1936,13 +1938,13 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
 
 Spriter_Character.prototype.updateVisibility = function() {
     Sprite_Base.prototype.updateVisibility.call(this);
-    if (this.parent.constructor == ShaderTilemap && this._character.isTransparent()) {
+    if (this._spriteType == 'character' && this._character.isTransparent()) {
         this.visible = false;
     }
 };
 
 Spriter_Character.prototype.updatePosition = function() {
-    if (this.parent.constructor == ShaderTilemap) {
+    if (this._spriteType == 'character') {
         this.x = this._character.screenX();
         this.y = this._character.screenY();
         this.z = this._character.screenZ();
@@ -1960,7 +1962,7 @@ Spriter_Character.prototype.updateAnimation = function() {
 };
 
 Spriter_Character.prototype.updateOther = function() {
-    if (this.parent.constructor == ShaderTilemap) {
+    if (this._spriteType == 'character') {
 	    this.opacity = this._character.opacity();
 	    this.blendMode = this._character.blendMode();
 	    this._bushDepth = this._character.bushDepth();

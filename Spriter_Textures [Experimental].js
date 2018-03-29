@@ -57,7 +57,7 @@
  *
  * @param Animations Folder
  * @desc Folder where animations are kept.
- * @default data/animations
+ * @default data/animations/
  *
  * @param Spriter Sprites Folder
  * @desc Folder where skinsets and single bitmaps are kept.
@@ -295,31 +295,30 @@ Game_CharacterBase.prototype.initGlobalVars = function () {
 
     if (!$gameVariables._data[spriterVarId]) {
         $gameVariables._data[spriterVarId] = {};
-    	$gameVariables._data[spriterVarId].player = {};
-    	$gameVariables._data[spriterVarId].player.tag = [];
-    	$gameVariables._data[spriterVarId].player.var = {};
-    	$gameVariables._data[spriterVarId].player._children = [];
-    	$gameVariables._data[spriterVarId].followers = {};
-    	$gameVariables._data[spriterVarId].followers._children = [];
-    	$gameVariables._data[spriterVarId].maps = {};
-        $gameVariables._data[spriterVarId]._spriterCharacterSprites = [];
-        $gameVariables._data[spriterVarId]._childSprites = [];
-        $gameVariables._data[spriterVarId]._spriteRequests = [];
-        $gameVariables._data[spriterVarId]._followerRequests = [];
+      $gameVariables._data[spriterVarId].player = {};
+      $gameVariables._data[spriterVarId].player.tag = [];
+      $gameVariables._data[spriterVarId].player.var = {};
+      $gameVariables._data[spriterVarId].player._children = [];
+      $gameVariables._data[spriterVarId].followers = {};
+      $gameVariables._data[spriterVarId].followers._children = [];
+      $gameVariables._data[spriterVarId].maps = {};
+      $gameVariables._data[spriterVarId]._childSprites = [];
+      $gameVariables._data[spriterVarId]._spriteRequests = [];
+      $gameVariables._data[spriterVarId]._followerRequests = [];
     }
 
     var globalVariable = $gameVariables._data[spriterVarId];
     for (var i = 0; i < $gamePlayer.followers()._data.length; i++) {
-    	var followerId = $gamePlayer.followers()._data[i]._memberIndex;
-    	if (!globalVariable.followers.hasOwnProperty("follower_" + followerId)) {
-	        globalVariable.followers["follower_" + followerId] = {};
-	        globalVariable.followers["follower_" + followerId].tag = [];
-	        globalVariable.followers["follower_" + followerId].var = {};
-	    }
+      var followerId = $gamePlayer.followers()._data[i]._memberIndex;
+      if (!globalVariable.followers.hasOwnProperty("follower_" + followerId)) {
+          globalVariable.followers["follower_" + followerId] = {};
+          globalVariable.followers["follower_" + followerId].tag = [];
+          globalVariable.followers["follower_" + followerId].var = {};
+      }
     }
     if (!globalVariable.maps.hasOwnProperty("map_" + String($gameMap._mapId))) {
-    	globalVariable.maps["map_" + String($gameMap._mapId)] = {};
-    	globalVariable.maps["map_" + String($gameMap._mapId)]._children = {};
+      globalVariable.maps["map_" + String($gameMap._mapId)] = {};
+      globalVariable.maps["map_" + String($gameMap._mapId)]._children = {};
     }
 };
 
@@ -327,31 +326,31 @@ Game_CharacterBase.prototype.initGlobalVars = function () {
 // Give values to properies from meta or stored global values.
 //-------------------------------------------------------------------------------------------------------------
 Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visible) {
-	var notes;
+  var notes;
 
-	if (character.constructor == Game_Player) {
-		notes = $dataActors[$gameParty.leader()._actorId].meta;
-	}
-	else if (character.constructor == Game_Follower) {
-		notes = $dataActors[character.actor()._actorId].meta;
-	}
-	else if (character.constructor == Game_Event) {
-		notes = {};
-    	var comment = list.parameters[0].substring(9, list.parameters[0].length - 1);
-    	param = comment.split(",");
-    	notes._skeleton = param[0];
-    	notes._skin = param[1];
-    	notes._speed = param[2];
-    	notes._cellX = param[3];
-    	notes._cellY = param[4];
-    	notes._spriteMask = param[5];
-    	if (notes._spriteMask == "true") {
-    		notes._spriteMaskX = param[6];
-    		notes._spriteMaskY = param[7];
-    		notes._spriteMaskW = param[8];
-    		notes._spriteMaskH = param[9];
-    	}
-	}
+  if (character.constructor == Game_Player) {
+    notes = $dataActors[$gameParty.leader()._actorId].meta;
+  }
+  else if (character.constructor == Game_Follower) {
+    notes = $dataActors[character.actor()._actorId].meta;
+  }
+  else if (character.constructor == Game_Event) {
+    notes = {};
+      var comment = list.parameters[0].substring(9, list.parameters[0].length - 1);
+      param = comment.split(",");
+      notes._skeleton = param[0];
+      notes._skin = param[1];
+      notes._speed = param[2];
+      notes._cellX = param[3];
+      notes._cellY = param[4];
+      notes._spriteMask = param[5];
+      if (notes._spriteMask == "true") {
+        notes._spriteMaskX = param[6];
+        notes._spriteMaskY = param[7];
+        notes._spriteMaskW = param[8];
+        notes._spriteMaskH = param[9];
+      }
+  }
     var globalInfo = this.getCharacterGlobalInfo(character);
     character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
     character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
@@ -363,15 +362,15 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
     character._spriter._stop = globalInfo._stop || false;
     character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
     if (character._spriter._spriteMask.available) {
-    	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
-    	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
-    	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
-    	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
+      character._spriter._spriteMask.x = notes._spriteMaskX.trim();
+      character._spriter._spriteMask.y = notes._spriteMaskY.trim();
+      character._spriter._spriteMask.w = notes._spriteMaskW.trim();
+      character._spriter._spriteMask.h = notes._spriteMaskH.trim();
     }
 };
 
 Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
-	this.initGlobalVars();
+  this.initGlobalVars();
     var variable = $gameVariables._data[spriterVarId];
     var spriterVar;
 
@@ -394,11 +393,11 @@ Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
 // For Events and Children Sprites, which are constrained to a Map.
 //-------------------------------------------------------------------------------------------------------------
 Game_CharacterBase.prototype.initGlobalVarsForMap = function (character) {
-	var spriterVar;
-	var variable = $gameVariables._data[spriterVarId];
-	var variableMap = variable.maps["map_" + String($gameMap._mapId)];
+  var spriterVar;
+  var variable = $gameVariables._data[spriterVarId];
+  var variableMap = variable.maps["map_" + String($gameMap._mapId)];
 
-	if (character.constructor === Game_Event) {
+  if (character.constructor === Game_Event) {
         if (!variableMap.hasOwnProperty("event_" + String(character._eventId))) {
             variableMap["event_" + String(character._eventId)] = {};
         }
@@ -407,14 +406,14 @@ Game_CharacterBase.prototype.initGlobalVarsForMap = function (character) {
         spriterVar.var = {};
     }
     else {
-		if (!variableMap.hasOwnProperty("child_" + String(character._name))) {
+    if (!variableMap.hasOwnProperty("child_" + String(character._name))) {
             variableMap._children["child_" + String(character._name)] = {};
         }
         spriterVar = variableMap._children["child_" + String(character._name)];
         spriterVar.tag = [];
         spriterVar.var = {};
     }
-    return spriterVar;	
+    return spriterVar;  
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -425,7 +424,7 @@ Game_Player.prototype.refresh = function() {
     spriter_alias_Game_Player_refresh.call(this);
     var playerNotes = $dataActors[$gameParty.leader()._actorId].meta;
     if (playerNotes.hasOwnProperty("Spriter")) {
-    	this.setAnimationInfo(this, null, true);
+      this.setAnimationInfo(this, null, true);
     }
 };
 
@@ -433,27 +432,27 @@ var spriter_alias_Game_Follower_refresh = Game_Follower.prototype.refresh;
 Game_Follower.prototype.refresh = function() {
     spriter_alias_Game_Follower_refresh.call(this);
     if (this.actor()) {
-		var followerNotes = $dataActors[this.actor()._actorId].meta;
-	    if (followerNotes.hasOwnProperty("Spriter")) {
-			this.setAnimationInfo(this, null, this.isVisible());
-	    }
+    var followerNotes = $dataActors[this.actor()._actorId].meta;
+      if (followerNotes.hasOwnProperty("Spriter")) {
+      this.setAnimationInfo(this, null, this.isVisible());
+      }
     }
 };
 
 var spriter_alias_Game_Event_refresh = Game_Event.prototype.refresh;
 Game_Event.prototype.refresh = function() {
-	spriter_alias_Game_Event_refresh.call(this);
-	if (this._pageIndex >= 0) {
-		var commandList = this.page(this._pageIndex).list;	
-		for (var i = 0; i < commandList.length; i++) {
-	    	if (commandList[i].code == 108){
-	        	if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
-	        		this.setAnimationInfo(this, commandList[i], true);
-	        		break;
-	        	}
-	        }
-	    }	
-	}
+  spriter_alias_Game_Event_refresh.call(this);
+  if (this._pageIndex >= 0) {
+    var commandList = this.page(this._pageIndex).list;  
+    for (var i = 0; i < commandList.length; i++) {
+        if (commandList[i].code == 108){
+            if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
+              this.setAnimationInfo(this, commandList[i], true);
+              break;
+            }
+          }
+      } 
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -463,7 +462,7 @@ var spriter_alias_Game_Party_addActor = Game_Party.prototype.addActor;
 Game_Party.prototype.addActor = function(actorId) {
     spriter_alias_Game_Party_addActor.call(this, actorId);
     if (!this._actors.contains(actorId)) {
-    	$gameVariables._data[spriterVarId]._followerRequests.push(actorId);
+      $gameVariables._data[spriterVarId]._followerRequests.push(actorId);
     }
         
 };
@@ -477,19 +476,19 @@ Game_Party.prototype.addActor = function(actorId) {
 
 var spriter_alias_Spriteset_Map_createCharacters = Spriteset_Map.prototype.createCharacters;
 Spriteset_Map.prototype.createCharacters = function() {
-	spriter_alias_Spriteset_Map_createCharacters.call(this);    
-   	this.createSpriterCharacters();
-   	this.createGlobalSpriterCharacters();
+  spriter_alias_Spriteset_Map_createCharacters.call(this);    
+    this.createSpriterCharacters();
+    this.createGlobalSpriterCharacters();
 };
 
 Spriteset_Map.prototype.createSpriterCharacters = function() {
-	this._spriterCharacterSprites = [];
+  this._spriterCharacterSprites = [];
 
-	// Creating Spriter Event
+  // Creating Spriter Event
     $gameMap.events().forEach(function(event) {
-		if (this.hasSpriterSprite(event)) {
-			this._spriterCharacterSprites.push(new Spriter_Character(event));
-	    }
+    if (this.hasSpriterSprite(event)) {
+      this._spriterCharacterSprites.push(new Spriter_Character(event));
+      }
     }, this);
 
     // Creating Spriter Player
@@ -500,7 +499,7 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
 
     // Creating Spriter Followers
     $gamePlayer.followers().reverseEach(function(follower) {
-    	if (follower.actor() && this.hasSpriterSprite(follower)) {
+      if (follower.actor() && this.hasSpriterSprite(follower)) {
             this._spriterCharacterSprites.push(new Spriter_Character(follower));
         }
     }, this);
@@ -513,23 +512,23 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
 
 Spriteset_Map.prototype.createGlobalSpriterCharacters = function () {
     if ($gameVariables._data[spriterVarId]) {
-	    this._childSprites = [];
-		var playerChildren = $gameVariables._data[spriterVarId].player._children; 
-	    var followerChildren = $gameVariables._data[spriterVarId].followers._children; 
-		var eventChildren = $gameVariables._data[spriterVarId].maps['map_' + $gameMap._mapId]._children; 
-	   	for (var i = 0; i < playerChildren.length; i++) {
-	   		this.setChildAnimationInfo(playerChildren[i]);
-	   		this._childSprites.push(new Spriter_Character(playerChildren[i]));
-	   	}
-	   	for (var j = 0; j < eventChildren.length; j++) {
-	   		this.setChildAnimationInfo(eventChildren[j]);
-	   		this._childSprites.push(new Spriter_Character(eventChildren[j]));
-	   	}
-	    for (var k = 0; k < followerChildren.length; k++) {
-	        this.setChildAnimationInfo(followerChildren[k]);
-	        this._childSprites.push(new Spriter_Character(followerChildren[k]));
-	    }
-	}
+      this._childSprites = [];
+    var playerChildren = $gameVariables._data[spriterVarId].player._children; 
+      var followerChildren = $gameVariables._data[spriterVarId].followers._children; 
+    var eventChildren = $gameVariables._data[spriterVarId].maps['map_' + $gameMap._mapId]._children; 
+      for (var i = 0; i < playerChildren.length; i++) {
+        this.setChildAnimationInfo(playerChildren[i]);
+        this._childSprites.push(new Spriter_Character(playerChildren[i]));
+      }
+      for (var j = 0; j < eventChildren.length; j++) {
+        this.setChildAnimationInfo(eventChildren[j]);
+        this._childSprites.push(new Spriter_Character(eventChildren[j]));
+      }
+      for (var k = 0; k < followerChildren.length; k++) {
+          this.setChildAnimationInfo(followerChildren[k]);
+          this._childSprites.push(new Spriter_Character(followerChildren[k]));
+      }
+  }
 };
 
 
@@ -554,64 +553,64 @@ Spriteset_Map.prototype.setChildAnimationInfo = function(child) {
 
 var spriter_alias_Spriteset_Map_update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function() {
-	spriter_alias_Spriteset_Map_update.call(this);
-	if ($gameVariables._data[spriterVarId]) {
-		this.updateChildren();
-		this.updateFollowers();
-	}
+  spriter_alias_Spriteset_Map_update.call(this);
+  if ($gameVariables._data[spriterVarId]) {
+    this.updateChildren();
+    this.updateFollowers();
+  }
 };
 
 // Checks Global Variable for Sprite Requests from Plugin Commands.
 // The Spriter object that matches the name in the request is pulled from SpriterObject.JSON
 // And used for a new Sprite.
 Spriteset_Map.prototype.updateChildren = function() {
-	var spriteRequests = $gameVariables._data[spriterVarId]._spriteRequests;
-	for (var i = 0; i < spriteRequests.length; i++) {
-		for (var j = 0; j < $dataSpriterObjects.length; j++) {
-			if (spriteRequests[i].sprite == $dataSpriterObjects[j]._name) {
-				var character =  $dataSpriterObjects[j];
-		        this.setChildAnimationInfo(character);
-				this._childSprites.push(new Spriter_Character(character));
-				if (spriteRequests[i].parent == 'player') {
-					$gameVariables._data[spriterVarId].player._children.push(character);
-				}
-				else if (spriteRequests[i].parent == 'follower') {
-					$gameVariables._data[spriterVarId].followers._children.push(character);
-				}
-		    	$gameVariables._data[spriterVarId]._childSprites = this._childSprites;
-		    	break;	
-			}
-		}
-			
-	}
-	$gameVariables._data[spriterVarId]._spriteRequests = [];
+  var spriteRequests = $gameVariables._data[spriterVarId]._spriteRequests;
+  for (var i = 0; i < spriteRequests.length; i++) {
+    for (var j = 0; j < $dataSpriterObjects.length; j++) {
+      if (spriteRequests[i].sprite == $dataSpriterObjects[j]._name) {
+        var character =  $dataSpriterObjects[j];
+        this.setChildAnimationInfo(character);
+        this._childSprites.push(new Spriter_Character(character));
+        if (spriteRequests[i].parent == 'player') {
+          $gameVariables._data[spriterVarId].player._children.push(character);
+        }
+        else if (spriteRequests[i].parent == 'follower') {
+          $gameVariables._data[spriterVarId].followers._children.push(character);
+        }
+          $gameVariables._data[spriterVarId]._childSprites.push({name: spriteRequests[i].sprite});
+          break;  
+      }
+    }
+      
+  }
+  $gameVariables._data[spriterVarId]._spriteRequests = [];
 };
 
 Spriteset_Map.prototype.updateFollowers = function() {
-	var followerRequests = $gameVariables._data[spriterVarId]._followerRequests;
-	for (var i = 0; i < followerRequests.length; i ++) {
-		var followerId = followerRequests[i];
-		var followerNotes = $dataActors[followerId].meta;
-    	if (followerNotes.hasOwnProperty("Spriter")) {
-    		for (var j = 0; j < $gamePlayer.followers()._data.length; j++) {
-    			var follower = $gamePlayer.followers()._data[j];
-				if (follower.actor() && follower.actor()._actorId == followerId) {
-		            this._spriterCharacterSprites.push(new Spriter_Character(follower));
-		            var index = this._spriterCharacterSprites.length - 1;
-		            this._tilemap.addChild(this._spriterCharacterSprites[index]);
-					     $gameVariables._data[spriterVarId]._followerRequests = [];
+  var followerRequests = $gameVariables._data[spriterVarId]._followerRequests;
+  for (var i = 0; i < followerRequests.length; i ++) {
+    var followerId = followerRequests[i];
+    var followerNotes = $dataActors[followerId].meta;
+      if (followerNotes.hasOwnProperty("Spriter")) {
+        for (var j = 0; j < $gamePlayer.followers()._data.length; j++) {
+          var follower = $gamePlayer.followers()._data[j];
+        if (follower.actor() && follower.actor()._actorId == followerId) {
+                this._spriterCharacterSprites.push(new Spriter_Character(follower));
+                var index = this._spriterCharacterSprites.length - 1;
+                this._tilemap.addChild(this._spriterCharacterSprites[index]);
+               $gameVariables._data[spriterVarId]._followerRequests = [];
 
-		        }
-    		}
+            }
+        }
         }  
-	}
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Checks Character For Spriter Comment/Note 
 //-------------------------------------------------------------------------------------------------------------
 Spriteset_Map.prototype.hasSpriterSprite = function (character) {
-	if (character.constructor === Game_Event) {
+  if (character.constructor === Game_Event) {
         if (character._pageIndex !== -1) {
             var commandList = character.page(character._pageIndex).list;    
             for (var i = 0; i < commandList.length; i++) {
@@ -622,15 +621,15 @@ Spriteset_Map.prototype.hasSpriterSprite = function (character) {
                 }
             }
         }
-	}
-	else if (character.constructor === Game_Follower) {
-		var followerId = character.actor()._actorId;
-		var followerNotes = $dataActors[followerId].meta;
-    	if (followerNotes.hasOwnProperty("Spriter")) {
+  }
+  else if (character.constructor === Game_Follower) {
+    var followerId = character.actor()._actorId;
+    var followerNotes = $dataActors[followerId].meta;
+      if (followerNotes.hasOwnProperty("Spriter")) {
             return true;
         }
-	}
-	return false;
+  }
+  return false;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -687,12 +686,14 @@ Spriter_Character.prototype.initMembers = function() {
     this._globalAnimationInfo = null;
     this._spriteMask = {};
     this._limitCounter = 0;
+    this._spriteType = '';
 };
 
 Spriter_Character.prototype.setCharacter = function(character) {
 
     //Getting Character Meta
     this._character = character;
+    this._spriteType = this._character instanceof Game_CharacterBase ? 'character' : 'object';
     this._animationId = (character._direction - 2) / 2;
     this._skeleton = this._character._spriter._skeleton;
     this._skin = this._character._spriter._skin;
@@ -705,10 +706,10 @@ Spriter_Character.prototype.setCharacter = function(character) {
     this._stop = this._character._spriter._stop;
     this._spriteMask.available = this._character._spriter._spriteMask.available;
     if (this._spriteMask.available) {
-    	this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
-		this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
-		this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
-		this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
+      this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
+    this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
+    this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
+    this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
     }
 
 
@@ -726,7 +727,7 @@ Spriter_Character.prototype.setCharacter = function(character) {
         this._globalAnimationInfo = $gameVariables._data[spriterVarId].followers["follower_" + folId];
     }
     else {
-		var map = String($gameMap._mapId);
+    var map = String($gameMap._mapId);
         var name = String(this._character._name);
         this._globalAnimationInfo = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
     }
@@ -839,7 +840,7 @@ Spriter_Character.prototype.start = function() {
 
 Spriter_Character.prototype.setInitialCharacter = function() {
 
-	var item;
+  var item;
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
@@ -854,10 +855,10 @@ Spriter_Character.prototype.setInitialCharacter = function() {
 
         // Setting Bone Values
         for (var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
-        	id = Number(this._pathMain[this._key].bone_ref[n].timeline);
-        	item = this._element[id];
-        	item.timelineId = id;
-        	item.key = Number(this._pathMain[this._key].bone_ref[n].key); // Id of bone key for this._key
+          id = Number(this._pathMain[this._key].bone_ref[n].timeline);
+          item = this._element[id];
+          item.timelineId = id;
+          item.key = Number(this._pathMain[this._key].bone_ref[n].key); // Id of bone key for this._key
             item.currentKey = this._pathTime[item.timelineId].key[item.key];
             item.type = "bone";
             this.setInitialElements(n, item);
@@ -868,13 +869,13 @@ Spriter_Character.prototype.setInitialCharacter = function() {
 
         //Going through all Objects for Current Key
         for (var i = 0; i < this._pathMain[this._key].object_ref.length; i++){
-        	id = Number(this._pathMain[this._key].object_ref[i].timeline);
-        	item = this._element[id];
-        	item.timelineId = id;
-        	item.key = Number(this._pathMain[this._key].object_ref[i].key); // Id of bone key for this._key
+          id = Number(this._pathMain[this._key].object_ref[i].timeline);
+          item = this._element[id];
+          item.timelineId = id;
+          item.key = Number(this._pathMain[this._key].object_ref[i].key); // Id of bone key for this._key
             item.currentKey = this._pathTime[item.timelineId].key[item.key];
             item.type = "object";
-        	this.setInitialElements(i, item);
+          this.setInitialElements(i, item);
 
         }
     }
@@ -888,37 +889,37 @@ Spriter_Character.prototype.setInitialElements = function(n, item) {
     var h;
     var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
     var folderId = Number(element.folder);
-	var fileId = Number(element.file);
+  var fileId = Number(element.file);
 
     if (item.type === "object") {
 
-    	// Reset Inheritance
-	    if (!globals.objects.hasOwnProperty("object_" + Number(item.timelineId))) {
-        	globals.objects["object_" + Number(item.timelineId)] = {};
-    	}
-    	elementGlobal = globals.objects["object_" + Number(item.timelineId)];
-		
-		// Set Inheritance
-	    if (this._pathMain[this._key].object_ref[n].hasOwnProperty('parent')) {
-	    	parentMainId = this._pathMain[this._key].object_ref[n].parent;
-	    	parentTimeId = this.pathTimeId("bone", parentMainId);
-	        this._element[parentTimeId].addChild(item);
-	    } 
-	    else {
+      // Reset Inheritance
+      if (!globals.objects.hasOwnProperty("object_" + Number(item.timelineId))) {
+          globals.objects["object_" + Number(item.timelineId)] = {};
+      }
+      elementGlobal = globals.objects["object_" + Number(item.timelineId)];
+    
+    // Set Inheritance
+      if (this._pathMain[this._key].object_ref[n].hasOwnProperty('parent')) {
+        parentMainId = this._pathMain[this._key].object_ref[n].parent;
+        parentTimeId = this.pathTimeId("bone", parentMainId);
+          this._element[parentTimeId].addChild(item);
+      } 
+      else {
             this._sprite.addChild(item);
-	        
-	    }
+          
+      }
 
-	    w = Number(this._animation.folder[folderId].file[fileId].width);
-	    h = Number(this._animation.folder[folderId].file[fileId].height);
+      w = Number(this._animation.folder[folderId].file[fileId].width);
+      h = Number(this._animation.folder[folderId].file[fileId].height);
 
-	}
-	else {
-	    if (!globals.bones.hasOwnProperty("bone_" + Number(item.timelineId))) {
-	        globals.bones["bone_" + Number(item.timelineId)] = {};
-	    }
-	    elementGlobal = globals.bones["bone_" + Number(item.timelineId)];
-	}
+  }
+  else {
+      if (!globals.bones.hasOwnProperty("bone_" + Number(item.timelineId))) {
+          globals.bones["bone_" + Number(item.timelineId)] = {};
+      }
+      elementGlobal = globals.bones["bone_" + Number(item.timelineId)];
+  }
 
     var ex = Number(element.x) || 0;
     var ey = Number(element.y) || 0;
@@ -937,22 +938,22 @@ Spriter_Character.prototype.setInitialElements = function(n, item) {
 
     if (item.type === "object") {
 
-	    var eax = Number(element.pivot_x) || 0;
-	    var eay = 1 - Number(element.pivot_y) || 0;
-	    var ea = element.a || 1;
-	    ea = Number(ea);
-	    var z = Number(this._pathMain[this._key].object_ref[n].z_index);
+      var eax = Number(element.pivot_x) || 0;
+      var eay = 1 - Number(element.pivot_y) || 0;
+      var ea = element.a || 1;
+      ea = Number(ea);
+      var z = Number(this._pathMain[this._key].object_ref[n].z_index);
 
-    	item.alpha = elementGlobal.a || ea;
-		item.anchor.x = elementGlobal.ex || eax;
-	    item.anchor.y = elementGlobal.ey || eay;		
-		item.zIndex = elementGlobal.z || z;
+      item.alpha = elementGlobal.a || ea;
+    item.anchor.x = elementGlobal.ex || eax;
+      item.anchor.y = elementGlobal.ey || eay;    
+    item.zIndex = elementGlobal.z || z;
 
-	   	this.updateBitmaps(item);
+      this.updateBitmaps(item);
 
-		// Set Inherited Sprite
+    // Set Inherited Sprite
         
-    	this.controlChildSprites(item.timelineId, w, h);
+      this.controlChildSprites(item.timelineId, w, h);
     }
 };
 
@@ -1012,7 +1013,7 @@ Spriter_Character.prototype.updateDirection = function() {
 Spriter_Character.prototype.updateSprite = function() {
     if (!this._stop) {
         if (!limitProcessCheck || this._limitCounter === 0) {
-    	    this.checkChanges();
+          this.checkChanges();
             this.setCharacterSprite();
             this.updateTagsAndVars();
         }
@@ -1037,7 +1038,7 @@ Spriter_Character.prototype.updateSprite = function() {
                 this._animationFrame = 0;
                 this._globalAnimationInfo.frame = 0;
                 this._globalAnimationInfo.key = 0;
-        		this.updateDisplay();
+            this.updateDisplay();
             }
             else {
                 this._resetter = true;
@@ -1045,7 +1046,7 @@ Spriter_Character.prototype.updateSprite = function() {
         }
     }
     else {
-        this.checkChanges();	
+        this.checkChanges();  
     }
     this.checkReset();
 };
@@ -1062,7 +1063,7 @@ Spriter_Character.prototype.checkReset = function() {
 };
 
 Spriter_Character.prototype.isMoving = function(character) {
-	return character._stepAnime || character.isMoving() && character._walkAnime;
+  return character._stepAnime || character.isMoving() && character._walkAnime;
 };
 
 Spriter_Character.prototype.checkChanges = function() {
@@ -1070,7 +1071,7 @@ Spriter_Character.prototype.checkChanges = function() {
     if (this._skeleton !== this._character._spriter._skeleton) {
         // Resetting the whole Sprite
         this._character._spriter.forceUpdate = true;
-    	this._skeleton = this._character._spriter._skeleton;
+      this._skeleton = this._character._spriter._skeleton;
         this._skin = this._character._spriter._skin;
         this._animationFrame = 0;
         this._key = 0;
@@ -1128,26 +1129,26 @@ Spriter_Character.prototype.checkChanges = function() {
 // When this._speed changes sign, this._key is changed.
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.fixKeys = function () {
-	if (this._speed < 0 && Number(this._character._spriter._speed) > 0) {
-		if (this._key === 0 && this._repeat) {
-			this._key = this._pathMain.length - 1;
-		}
-		else if (this._key === 0 && !this._repeat) {
-		}
-		else {
-			this._key--;
-		}
-	}
-	else if (this._speed > 0 && Number(this._character._spriter._speed) < 0) {
-		if (this._key == this._pathMain.length - 1 && this._repeat) {
-			this._key = 0;
-		}
-		else if (this._key == this._pathMain.length - 1 && !this._repeat) {
-		}
-		else {
-			this._key++;
-		}
-	}
+  if (this._speed < 0 && Number(this._character._spriter._speed) > 0) {
+    if (this._key === 0 && this._repeat) {
+      this._key = this._pathMain.length - 1;
+    }
+    else if (this._key === 0 && !this._repeat) {
+    }
+    else {
+      this._key--;
+    }
+  }
+  else if (this._speed > 0 && Number(this._character._spriter._speed) < 0) {
+    if (this._key == this._pathMain.length - 1 && this._repeat) {
+      this._key = 0;
+    }
+    else if (this._key == this._pathMain.length - 1 && !this._repeat) {
+    }
+    else {
+      this._key++;
+    }
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1219,7 +1220,7 @@ Spriter_Character.prototype.updateFrame = function() {
         else if (this._key === 0) {
 
             // If animationFrame is 0 and Animation repeats, then animationFrame = Animation Length
-    		if (this._animationFrame === 0 && this._repeat) {
+        if (this._animationFrame === 0 && this._repeat) {
                 this._animationFrame = this._animLength;        
             }
             // If animationFrame is smaller than 0 and Animation repeats  animationFrame = Animation Length
@@ -1227,11 +1228,11 @@ Spriter_Character.prototype.updateFrame = function() {
                 this._animationFrame = this._animLength;
             }
             else if (this._animationFrame + speed <= lastKeyTime && this._repeat) {
-            	this._key = this._pathMain.length - 1; 
+              this._key = this._pathMain.length - 1; 
                 this._animationFrame = lastKeyTime;
             }
             else if (this._animationFrame == lastKeyTime && this._repeat) {
-				this._animationFrame += speed;
+        this._animationFrame += speed;
             } 
             else {
                 this._animationFrame += speed;
@@ -1262,14 +1263,14 @@ Spriter_Character.prototype.setCharacterSprite = function() {
             this.setUpdateType(item);
         }
     }
-	// Set Object 
+  // Set Object 
     if (this._pathMain[this._key].hasOwnProperty('object_ref')) {
 
         //Going through all Objects for Current Key
         for(var l = 0; l < this._pathMain[this._key].object_ref.length; l++){
             item = this.getItemForTime("object", l);
             //Setting Object Inheritance
-        	this.objectInheritanceUpdate(l);
+          this.objectInheritanceUpdate(l);
             //Setting Object Values
             this.setUpdateType(item);
         }
@@ -1315,23 +1316,23 @@ Spriter_Character.prototype.setUpdateType = function(item) {
 
 // Returns Id of item from Timeline. Timeline Id is static and can be used for this._element
 Spriter_Character.prototype.pathTimeId = function(type, i) {
-	return Number(this._pathMain[this._key][type + "_ref"][i].timeline);
+  return Number(this._pathMain[this._key][type + "_ref"][i].timeline);
 };
 
 // Assigns type, times, and other properties to item.
 Spriter_Character.prototype.getItemForTime = function(type, i) {
-	var item;
-	id = this.pathTimeId(type, i);
-	if (type == "bone") {
-		item = this._element[id];
-		item_ref = this._pathMain[this._key].bone_ref[i];
-		item.type = "bone";
-	}
-	else {
-		item = this._element[id];
-		item_ref = this._pathMain[this._key].object_ref[i];
-		item.type = "object";
-	}
+  var item;
+  id = this.pathTimeId(type, i);
+  if (type == "bone") {
+    item = this._element[id];
+    item_ref = this._pathMain[this._key].bone_ref[i];
+    item.type = "bone";
+  }
+  else {
+    item = this._element[id];
+    item_ref = this._pathMain[this._key].object_ref[i];
+    item.type = "object";
+  }
     item.timelineId = Number(item_ref.timeline); //Id of bone in the Timeline
 
     item.key = Number(item_ref.key); // Id of bone key for this._key
@@ -1343,15 +1344,15 @@ Spriter_Character.prototype.getItemForTime = function(type, i) {
     item.lastKeyTime = Number(item.lastKey.time) || 0;
 
     if (this.isAnimated(item)) {
-    	item.firstKey = this._pathTime[item.timelineId].key[1];
-    	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[1].time);
+      item.firstKey = this._pathTime[item.timelineId].key[1];
+      item.firstKeyTime = Number(this._pathTime[item.timelineId].key[1].time);
     }
     else {
-    	item.firstKey = this._pathTime[item.timelineId].key[0];
-    	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[0].time) || 0;
-	}
+      item.firstKey = this._pathTime[item.timelineId].key[0];
+      item.firstKeyTime = Number(this._pathTime[item.timelineId].key[0].time) || 0;
+  }
 
-	item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
+  item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
     item.nextKeyTime = (item.nextKey.time) || 0;
 
     // True since this Item exists for the span of the current Key
@@ -1362,64 +1363,64 @@ Spriter_Character.prototype.getItemForTime = function(type, i) {
 
 // Determines Next Key according to this._speed sign
 Spriter_Character.prototype.getNextKey = function(item) {
-	if (this._speed > 0) {
-		if (item.currentKeyTime == item.lastKeyTime && this._repeat) {
-			return 0;
-		}
-		else if (item.currentKeyTime == item.lastKeyTime && !this._repeat) {
-			return item.key;
-		}
-		else {
-			return item.key + 1;
-		}
-	}
-	else {
-		if (item.currentKeyTime === 0 && this._repeat) {
-			return this._pathTime[item.timelineId].key.length - 1;
-		}
-		else if (item.currentKeyTime === 0 && !this._repeat) {
-			return item.key;
-		} 
-		else {
-			return item.key - 1;
-		}
-	}
+  if (this._speed > 0) {
+    if (item.currentKeyTime == item.lastKeyTime && this._repeat) {
+      return 0;
+    }
+    else if (item.currentKeyTime == item.lastKeyTime && !this._repeat) {
+      return item.key;
+    }
+    else {
+      return item.key + 1;
+    }
+  }
+  else {
+    if (item.currentKeyTime === 0 && this._repeat) {
+      return this._pathTime[item.timelineId].key.length - 1;
+    }
+    else if (item.currentKeyTime === 0 && !this._repeat) {
+      return item.key;
+    } 
+    else {
+      return item.key - 1;
+    }
+  }
 
 };
 
 // Checks if item has more than one Key (has change in values, ergo, animation)
 Spriter_Character.prototype.isAnimated = function(item) {
-	if (item.type == "bone") {
-		id = item.timelineId;
-		return this._pathTime[id].key.length > 1;
-	}
-	else {
-		id = item.timelineId;
-		return this._pathTime[id].key.length > 1;
-	}
+  if (item.type == "bone") {
+    id = item.timelineId;
+    return this._pathTime[id].key.length > 1;
+  }
+  else {
+    id = item.timelineId;
+    return this._pathTime[id].key.length > 1;
+  }
 };
 
 
 Spriter_Character.prototype.isBetweenKeys = function(item) {
-	if (this._speed > 0) {
-		if (this._animationFrame < item.lastKeyTime) {
-			return this._animationFrame > item.currentKeyTime && this._animationFrame < item.nextKeyTime;
-		}
-		else {
-			return this._animationFrame > item.lastKeyTime;
-		}
-	}
-	else {
-		if (this._animationFrame > item.lastKeyTime) {
-			return true;
-		}
-		else if (this._animationFrame < item.lastKeyTime) {
-			return this._animationFrame < item.currentKeyTime && this._animationFrame > item.nextKeyTime;
-		}
-		else {
-			return item.lastKeyTime !== 0;
-		}
-	}
+  if (this._speed > 0) {
+    if (this._animationFrame < item.lastKeyTime) {
+      return this._animationFrame > item.currentKeyTime && this._animationFrame < item.nextKeyTime;
+    }
+    else {
+      return this._animationFrame > item.lastKeyTime;
+    }
+  }
+  else {
+    if (this._animationFrame > item.lastKeyTime) {
+      return true;
+    }
+    else if (this._animationFrame < item.lastKeyTime) {
+      return this._animationFrame < item.currentKeyTime && this._animationFrame > item.nextKeyTime;
+    }
+    else {
+      return item.lastKeyTime !== 0;
+    }
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1428,15 +1429,15 @@ Spriter_Character.prototype.isBetweenKeys = function(item) {
 Spriter_Character.prototype.setOnKey = function(item) {
     var globals = this._globalAnimationInfo;
     if (item.type === "bone") {
-    	if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
-        	globals.bones["bone_" + String(item.timelineId)] = {};
-    	}
-	}
-	else {
-	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
-    	    globals.objects["object_" + String(item.timelineId)] = {};
-    	}
-	}
+      if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
+          globals.bones["bone_" + String(item.timelineId)] = {};
+      }
+  }
+  else {
+      if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
+          globals.objects["object_" + String(item.timelineId)] = {};
+      }
+  }
 
     var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
 
@@ -1466,22 +1467,22 @@ Spriter_Character.prototype.setOnKey = function(item) {
     // Object-specific Values ----------------------------
     if (item.type === "object") {
     
-    	// Getting Object Values for Key
-    	var folderId = Number(element.folder);
-	    var fileId = Number(element.file);
-	    var w = Number(this._animation.folder[folderId].file[fileId].width);
-	    var h = Number(this._animation.folder[folderId].file[fileId].height);
-	    var ax = Number(element.pivot_x) || 0;
-	    var ay = 1 - Number(element.pivot_y) || 0;
-	    var a = element.a || 1;
-	    a = Number(a);
+      // Getting Object Values for Key
+      var folderId = Number(element.folder);
+      var fileId = Number(element.file);
+      var w = Number(this._animation.folder[folderId].file[fileId].width);
+      var h = Number(this._animation.folder[folderId].file[fileId].height);
+      var ax = Number(element.pivot_x) || 0;
+      var ay = 1 - Number(element.pivot_y) || 0;
+      var a = element.a || 1;
+      a = Number(a);
 
-    	// Setting Object Values for Key
+      // Setting Object Values for Key
       item.alpha = a;
-	    item.anchor.x = ax;
-	    item.anchor.y = ay;
-	    
-		this.controlChildSprites(item.timelineId, w, h);
+      item.anchor.x = ax;
+      item.anchor.y = ay;
+      
+    this.controlChildSprites(item.timelineId, w, h);
     }
 
     // ---------------------------------------------------
@@ -1493,15 +1494,15 @@ Spriter_Character.prototype.setOnKey = function(item) {
 // Assigns the correct image for object / draws bitmap for bone.
 Spriter_Character.prototype.updateBitmaps = function (item) {
 
-	// Object Bitmaps / Character Parts
-	if (item.type === "object") {
-    	var object = item.currentKey.object;
-	    var folderId = Number(object.folder);
-	    var fileId = Number(object.file);
-	    var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
-	    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
-	    var skin = this._skin;
-	    var skinParts = this._skinParts;
+  // Object Bitmaps / Character Parts
+  if (item.type === "object") {
+      var object = item.currentKey.object;
+      var folderId = Number(object.folder);
+      var fileId = Number(object.file);
+      var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
+      var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
+      var skin = this._skin;
+      var skinParts = this._skinParts;
         var path = "Spriter/"+ skin + "/" + fileName;
 
         // Check for Skin Parts
@@ -1531,18 +1532,18 @@ Spriter_Character.prototype.updateBitmaps = function (item) {
         else {
             item.texture = $spriterTextures["/img/characters/" + path];
         }
-	}
-	// Bone Bitmaps / Skeleton Display
-	else {
-	    if (showSkeleton || this._character._spriter._showSkeleton) {
-	        var boneId = Number(this._pathTime[item.timelineId].obj);
-	        var w = Number(this._animation.entity.obj_info[boneId].w);
-	        var h = 4;
-	        item.bitmap = new Bitmap(w, h);
-	        item.bitmap.fillRect(0, -2, w, h, 'black');
-	        item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
-    	}
-	}
+  }
+  // Bone Bitmaps / Skeleton Display
+  else {
+      if (showSkeleton || this._character._spriter._showSkeleton) {
+          var boneId = Number(this._pathTime[item.timelineId].obj);
+          var w = Number(this._animation.entity.obj_info[boneId].w);
+          var h = 4;
+          item.bitmap = new Bitmap(w, h);
+          item.bitmap.fillRect(0, -2, w, h, 'black');
+          item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
+      }
+  }
 
 };
 
@@ -1583,22 +1584,22 @@ Spriter_Character.prototype.controlChildSprites = function(i, w, h) {
             var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
             for (var l = 0; l < childSprites.length; l++) {
                 if (this.isChildForThis(l, k) && this.hasNoParent(l) || this.hasSameParent(l, k)) {
-                	if (!spriteChildren[k].remove) {
-                		childSprites[l].x = 0;
-	                    childSprites[l].y = 0;
-	                    childSprites[l]._sprite.x = 0 - (this._element[i].anchor.x * w);
-	                    childSprites[l]._sprite.y = 0 - (this._element[i].anchor.y * h);
-	                    this._element[i].addChild(childSprites[l]);
-	                    childSprites[l]._spriteParent = spriteChildren[k].parent;
-	                    break;	
-                	}
+                  if (!spriteChildren[k].remove) {
+                    childSprites[l].x = 0;
+                      childSprites[l].y = 0;
+                      childSprites[l]._sprite.x = 0 - (this._element[i].anchor.x * w);
+                      childSprites[l]._sprite.y = 0 - (this._element[i].anchor.y * h);
+                      this._element[i].addChild(childSprites[l]);
+                      childSprites[l]._spriteParent = spriteChildren[k].parent;
+                      break;  
+                  }
                     // Removes child Sprite from character's Sprite Children and Global 
-                	else {
-            		    spriteChildren.splice(k, 1);
-                		childSprites.splice(l, 1);
-                        this._element[i].removeChildren();
-                		break;
-                	}
+                  else {
+                    spriteChildren.splice(k, 1);
+                    childSprites.splice(l, 1);
+                    this._element[i].removeChildren();
+                    break;
+                  }
                 }
             }
         }
@@ -1608,28 +1609,28 @@ Spriter_Character.prototype.controlChildSprites = function(i, w, h) {
 Spriter_Character.prototype.isChildForThis = function(l ,k) {
     var spriteChildren = this._spriteChildren;
     var childSprites = $gameVariables._data[spriterVarId]._childSprites; 
-	return childSprites[l]._character._name == spriteChildren[k].sprite;
+  return childSprites[l]._character._name == spriteChildren[k].name;
 };
 
 Spriter_Character.prototype.hasNoParent = function(l) {
     var spriteChildren = this._spriteChildren;
     var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
-	return childSprites[l]._spriteParent === undefined;
+  return childSprites[l]._spriteParent === undefined;
 };
 
 Spriter_Character.prototype.hasSameParent = function(l ,k) {
     var spriteChildren = this._spriteChildren;
     var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
-	return childSprites[l]._spriteParent == spriteChildren[k].parent;
+   return childSprites[l]._spriteParent == spriteChildren[k].parent;
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Checks if bone has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.updateBoneInheritance = function(j) {
-	id = this.pathTimeId("bone", j);
-	if (this._pathMain[this._key].bone_ref[j].hasOwnProperty('parent')) {
-		parentMainId = this._pathMain[this._key].bone_ref[j].parent;
+  id = this.pathTimeId("bone", j);
+  if (this._pathMain[this._key].bone_ref[j].hasOwnProperty('parent')) {
+    parentMainId = this._pathMain[this._key].bone_ref[j].parent;
         parentTimeId = this.pathTimeId("bone", parentMainId);
         this._element[parentTimeId].addChild(this._element[id]);
     }
@@ -1642,10 +1643,10 @@ Spriter_Character.prototype.updateBoneInheritance = function(j) {
 // Checks if object has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
-	id = this.pathTimeId("object", i);
+  id = this.pathTimeId("object", i);
     if (this._pathMain[this._key].object_ref[i].hasOwnProperty('parent')) {
-    	parentMainId = this._pathMain[this._key].object_ref[i].parent;
-    	parentTimeId = this.pathTimeId("bone", parentMainId);
+      parentMainId = this._pathMain[this._key].object_ref[i].parent;
+      parentTimeId = this.pathTimeId("bone", parentMainId);
         this._element[parentTimeId].addChild(this._element[id]);
     } 
     else {
@@ -1654,7 +1655,7 @@ Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
         }
     }
     var z = Number(this._pathMain[this._key].object_ref[i].z_index);
-	this._element[id].zIndex = z;
+  this._element[id].zIndex = z;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1667,14 +1668,14 @@ Spriter_Character.prototype.tween = function(item) {
     // Reset Global Value
     var globals = this._globalAnimationInfo;
     if (item.type === "bone") {
-	    if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
-	        globals.bones["bone_" + String(item.timelineId)] = {};
-	    }
-	}
+      if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
+          globals.bones["bone_" + String(item.timelineId)] = {};
+      }
+  }
     else {
-	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
-	        globals.objects["object_" + String(item.timelineId)] = {};
-	    }
+      if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
+          globals.objects["object_" + String(item.timelineId)] = {};
+      }
     }
 
     // Getting Keys & Times
@@ -1837,7 +1838,7 @@ Spriter_Character.prototype.storeToGlobal = function(item) {
         characterGlobal = $gameVariables._data[spriterVarId].followers["follower_" + folId];
     }
     else {
-    	var map = String($gameMap._mapId);
+      var map = String($gameMap._mapId);
         var name = String(this._character._name);
         characterGlobal = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
     }
@@ -1851,9 +1852,9 @@ Spriter_Character.prototype.storeToGlobal = function(item) {
         bone.sy = item.scale.y;
     }
     else if (item.type === "object") {
-    	if (!characterGlobal.objects.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
-    		characterGlobal.objects[item.type + "_" + String(item.timelineId)] = {};
-    	}
+      if (!characterGlobal.objects.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
+        characterGlobal.objects[item.type + "_" + String(item.timelineId)] = {};
+      }
         var object = characterGlobal.objects[item.type + "_" + String(item.timelineId)];
         object.x = item.x;
         object.y = item.y;
@@ -1942,13 +1943,13 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
 
 Spriter_Character.prototype.updateVisibility = function() {
     Sprite_Base.prototype.updateVisibility.call(this);
-    if (this.parent.constructor == ShaderTilemap && this._character.isTransparent()) {
+    if (this._spriteType == 'character' && this._character.isTransparent()) {
         this.visible = false;
     }
 };
 
 Spriter_Character.prototype.updatePosition = function() {
-    if (this.parent.constructor == ShaderTilemap) {
+    if (this._spriteType == 'character') {
         this.x = this._character.screenX();
         this.y = this._character.screenY();
         this.z = this._character.screenZ();
@@ -1966,11 +1967,11 @@ Spriter_Character.prototype.updateAnimation = function() {
 };
 
 Spriter_Character.prototype.updateOther = function() {
-    if (this.parent.constructor == ShaderTilemap) {
-	    this.opacity = this._character.opacity();
-	    this.blendMode = this._character.blendMode();
-	    this._bushDepth = this._character.bushDepth();
-	}
+    if (this._spriteType == 'character') {
+      this.opacity = this._character.opacity();
+      this.blendMode = this._character.blendMode();
+      this._bushDepth = this._character.bushDepth();
+  }
 };
 
 Spriter_Character.prototype.setupAnimation = function() {
@@ -2198,7 +2199,7 @@ function obj2Arr(data) {
     var temp;
 
     if (!data.hasOwnProperty('folder')) {
-    	data.folder = [];
+      data.folder = [];
     }
 
     // folder
@@ -2323,7 +2324,7 @@ function obj2Arr(data) {
         
         // timeline
         if (!data.entity.animation[i].hasOwnProperty('timeline')) {
-        	data.entity.animation[i].timeline = [];
+          data.entity.animation[i].timeline = [];
         }
 
         if (data.entity.animation[i].timeline.constructor == Object) {
@@ -2431,19 +2432,19 @@ function getFiles (dir){
 
 var spriter_alias_game_interpreter_command356 = Game_Interpreter.prototype.command356;
 Game_Interpreter.prototype.command356 = function() {
-	if (evaluateParameters) {
-		var args = this._params[0].split(" ");
-	    for (var i = 1; i < args.length; i++) {
-	    	if (args[i].contains("var_")) {
-	    		args[i] = eval(args[i].replace("var_",""));
-	    	}
-	    }
-	    var command = args.shift();
-	    this.pluginCommand(command, args);
-	}
-	else {
-		spriter_alias_game_interpreter_command356.call(this);
-	}
+  if (evaluateParameters) {
+    var args = this._params[0].split(" ");
+      for (var i = 1; i < args.length; i++) {
+        if (args[i].contains("var_")) {
+          args[i] = eval(args[i].replace("var_",""));
+        }
+      }
+      var command = args.shift();
+      this.pluginCommand(command, args);
+  }
+  else {
+    spriter_alias_game_interpreter_command356.call(this);
+  }
     return true;
 };
 
@@ -2859,21 +2860,21 @@ Game_CharacterBase.prototype.hasActiveTag = function(tagName) {
 
 var spriter_alias_Game_CharacterBase_update = Game_CharacterBase.prototype.update;
 Game_CharacterBase.prototype.update = function() {
-	spriter_alias_Game_CharacterBase_update.call(this);
-	this.checkTags();
+  spriter_alias_Game_CharacterBase_update.call(this);
+  this.checkTags();
 };
 
 Game_CharacterBase.prototype.checkTags = function() {
-	if (this.hasOwnProperty("_spriter")) {
-		for (var i = 0; i < this._spriter.tag.length; i++) {
+  if (this.hasOwnProperty("_spriter")) {
+    for (var i = 0; i < this._spriter.tag.length; i++) {
 
-			if (this._spriter.tag[i].name.includes("se,")) {
-				tagArray = this._spriter.tag[i].name.split(",");
-				params = {};
-				params.name = tagArray[1];
-				params.pan = tagArray[2];
-				params.pitch = tagArray[3];
-				params.volume = Number(tagArray[4]);
+      if (this._spriter.tag[i].name.includes("se,")) {
+        tagArray = this._spriter.tag[i].name.split(",");
+        params = {};
+        params.name = tagArray[1];
+        params.pan = tagArray[2];
+        params.pitch = tagArray[3];
+        params.volume = Number(tagArray[4]);
                 if (tagArray[5] === "true") {
                     maxVolumeArea = Number(tagArray[6]);
                     maxArea = Number(tagArray[7]);
@@ -2887,8 +2888,8 @@ Game_CharacterBase.prototype.checkTags = function() {
                         params.volume = 0;
                     }
                 }
-    			AudioManager.playSe(params);
-			}
+          AudioManager.playSe(params);
+      }
             else if (this._spriter.tag[i].name.includes("ChildSprite,")) {
                 tagArray = this._spriter.tag[i].name.split(",");
                 params = {};
@@ -2946,8 +2947,8 @@ Game_CharacterBase.prototype.checkTags = function() {
                 }
                 $gameMap._interpreter.pluginCommand(command, args);
             }
-		}
-	}
+    }
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -2977,6 +2978,7 @@ var pixi_display;
             this.containerRenderWebGL(renderer);
         },
         renderCanvas: function (renderer) {
+          console.log("in");
             if (this._activeParentLayer && this._activeParentLayer != renderer._activeLayer) {
                 return;
             }
