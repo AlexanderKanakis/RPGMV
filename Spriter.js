@@ -10,9 +10,6 @@
    <Spriter> v1.0
  * @author KanaX
  *
- * @param Storing Variable
- * @desc Index of the variable used for storing player, follower and event sprite changes (number)
- * @default 99
  * 
  * @param Show Skeleton
  * @desc Display the Animation Skeleton (true or false).
@@ -55,6 +52,14 @@
  * @desc If Limit Process Check is On, determine in how many frames a Spriter Sprite will be updating.
  * @default 1
  *
+ * @param Animations Folder
+ * @desc Folder where animations are kept.
+ * @default data/animations/
+ *
+ * @param Spriter Sprites Folder
+ * @desc Folder where skinsets and single bitmaps are kept.
+ * @default img/characters/
+ *
  * @help 
  *
  * Contact: 
@@ -74,8 +79,7 @@
  * [2] Create path img/characters/Spriter/ and inside Spriter, a folder named Single Bitmaps.
  * [3] Paste SpriterObjects.json in data/ or copy the one from the demo.
  * [4] Create path data/animations/.
- * [5] Enable the plugin from the Plugin Manager and assign a number for the variable which will store animation info.
- *     WARNING: Do not modify that variable after activating the plugin.
+ * [5] Enable the plugin from the Plugin Manager.
  * [6] Have some ramen noodles, because you deserve them.
  *
  * Regarding Spriter:
@@ -245,7 +249,6 @@
  *
  */
   var parameters = $plugins.filter(function(p) { return p.description.contains('<Spriter>'); })[0].parameters;
-  var spriterVarId = parseInt(parameters['Storing Variable'] || 7);
   var showSkeleton = eval(parameters['Show Skeleton'] || false);
   var showFrames = eval(parameters['Show Frames'] || false);
   var evaluateParameters = eval(parameters['Evaluate Parameters'] || false);
@@ -253,6 +256,8 @@
   var texturePackerCharacter = parameters['TexturePacker Folder Character'] || "$";
   var limitProcessCheck = eval(parameters['Limit Process Check'] || false);
   var limitCounter = parameters['Limit Frame Counter'] || "1";
+  var animFolder = parameters['Animations Folder'] || "data/animations/";
+  var spriteFolder = parameters['Spriter Sprite Folder'] || "img/characters/";
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -276,41 +281,8 @@ Game_CharacterBase.prototype.initMembers = function() {
     this._spriter.var = {};
     this._spriter._spriteMask = {};
     this._spriter._showSkeleton = false;
-};
-
-//-------------------------------------------------------------------------------------------------------------
-// Global Variables are used to return Sprites to their previous state before exiting their respective scene.
-//-------------------------------------------------------------------------------------------------------------
-Game_CharacterBase.prototype.initGlobalVars = function () {
-
-    if (!$gameVariables._data[spriterVarId]) {
-        $gameVariables._data[spriterVarId] = {};
-    	$gameVariables._data[spriterVarId].player = {};
-    	$gameVariables._data[spriterVarId].player.tag = [];
-    	$gameVariables._data[spriterVarId].player.var = {};
-    	$gameVariables._data[spriterVarId].player._children = [];
-    	$gameVariables._data[spriterVarId].followers = {};
-    	$gameVariables._data[spriterVarId].followers._children = [];
-    	$gameVariables._data[spriterVarId].maps = {};
-        $gameVariables._data[spriterVarId]._spriterCharacterSprites = [];
-        $gameVariables._data[spriterVarId]._childSprites = [];
-        $gameVariables._data[spriterVarId]._spriteRequests = [];
-        $gameVariables._data[spriterVarId]._followerRequests = [];
-    }
-
-    var globalVariable = $gameVariables._data[spriterVarId];
-    for (var i = 0; i < $gamePlayer.followers()._data.length; i++) {
-    	var followerId = $gamePlayer.followers()._data[i]._memberIndex;
-    	if (!globalVariable.followers.hasOwnProperty("follower_" + followerId)) {
-	        globalVariable.followers["follower_" + followerId] = {};
-	        globalVariable.followers["follower_" + followerId].tag = [];
-	        globalVariable.followers["follower_" + followerId].var = {};
-	    }
-    }
-    if (!globalVariable.maps.hasOwnProperty("map_" + String($gameMap._mapId))) {
-    	globalVariable.maps["map_" + String($gameMap._mapId)] = {};
-    	globalVariable.maps["map_" + String($gameMap._mapId)]._children = {};
-    }
+    this._spriter._spriteRequests = [];
+    this._spriter._spriteRemoveRequests = [];
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -327,6 +299,7 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
 	}
 	else if (character.constructor == Game_Event) {
 		notes = {};
+      // Giving the Event comment a similar format to that of Actor meta data
     	var comment = list.parameters[0].substring(9, list.parameters[0].length - 1);
     	param = comment.split(",");
     	notes._skeleton = param[0];
@@ -342,69 +315,129 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
     		notes._spriteMaskH = param[9];
     	}
 	}
-    var globalInfo = this.getCharacterGlobalInfo(character);
-    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
-    character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
-    character._spriter._skinParts = globalInfo._skinParts || [];
-    character._spriter._spriteChildren = globalInfo._spriteChildren || [];
-    character._spriter._speed = globalInfo._speed || notes._speed.trim();
-    character._spriter._cellX = notes._cellX.trim();
-    character._spriter._cellY = notes._cellY.trim();
-    character._spriter._stop = globalInfo._stop || false;
-    character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
-    if (character._spriter._spriteMask.available) {
-    	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
-    	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
-    	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
-    	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
-    }
+  // Getting Character Info stored in global variable. It will replace Meta/Comment data if it exists.
+  var globalInfo = this.getCharacterGlobal();
+  character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
+  character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
+  character._spriter._skinParts = globalInfo._skinParts || [];
+  character._spriter._spriteChildren = globalInfo._spriteChildren || [];
+  character._spriter._speed = globalInfo._speed || notes._speed.trim();
+  character._spriter._cellX = notes._cellX.trim();
+  character._spriter._cellY = notes._cellY.trim();
+  character._spriter._stop = globalInfo._stop || false;
+  character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
+  if (character._spriter._spriteMask.available) {
+  	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
+  	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
+  	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
+  	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
+  }
 };
 
-Game_CharacterBase.prototype.getCharacterGlobalInfo = function (character) {
-	this.initGlobalVars();
-    var variable = $gameVariables._data[spriterVarId];
-    var spriterVar;
+Game_CharacterBase.prototype.changeSkinPart = function(originName, newSkin, isFullSprite) {
+        this._spriter.forceUpdate = true;
+        a = {};
+        a.originName = originName;
+        a.newSkin = newSkin;
+        a.isFullSprite = eval(isFullSprite);
+        if (this._spriter._skinParts.length > 0) {
+            for (i = 0; i < this._spriter._skinParts.length; i++) {
+                if (this._spriter._skinParts[i].originName == a.originName) {
+                    this._spriter._skinParts[i] = a;
+                    break;
+                }
+                else if (i == this._spriter._skinParts.length - 1) {
+                    this._spriter._skinParts.push(a);
+                }
+            }
+        }
+        else {
+            this._spriter._skinParts.push(a);
+        }
 
-    if (character.constructor === Game_Player) {
-        spriterVar = variable.player;    
-    }
-    else if (character.constructor === Game_Follower) {
-        spriterVar = variable.followers["follower_" + character._memberIndex];
-    }
-    else if (character.constructor === Game_Event) {
-        spriterVar = this.initGlobalVarsForMap(character);
-    }   
-    else {
-        spriterVar = this.initGlobalVarsForMap(character);
-    }
-    return spriterVar;
+        this.removeChildSprite(originName);
+
+        var globalInfo = this.getCharacterGlobal();
+        globalInfo._skinParts = this._spriter._skinParts;
 };
 
-//-------------------------------------------------------------------------------------------------------------
-// For Events and Children Sprites, which are constrained to a Map.
-//-------------------------------------------------------------------------------------------------------------
-Game_CharacterBase.prototype.initGlobalVarsForMap = function (character) {
-	var spriterVar;
-	var variable = $gameVariables._data[spriterVarId];
-	var variableMap = variable.maps["map_" + String($gameMap._mapId)];
+Game_CharacterBase.prototype.removeSkinPart = function(originName) {
+        this.forceUpdate = true;
+        a = {};
+        a.originName = originName;
+        for (i = 0; i < this._spriter._skinParts.length; i++) {
+          if (this._spriter._skinParts[i].originName == a.originName) {
+              this._spriter._skinParts.splice(i,1);
+              break;
+          }
+        }
 
-	if (character.constructor === Game_Event) {
-        if (!variableMap.hasOwnProperty("event_" + String(character._eventId))) {
-            variableMap["event_" + String(character._eventId)] = {};
-        }
-        spriterVar = variableMap["event_" + String(character._eventId)];
-        spriterVar.tag = [];
-        spriterVar.var = {};
+        var globalInfo = this.getCharacterGlobal();
+        globalInfo._skinParts = this._spriter._skinParts;
+}
+
+Game_CharacterBase.prototype.createChildSprite = function(parentSprite, spriteObjectName) {
+    this.forceUpdate = true;
+
+    var children = this._spriter._spriteChildren;
+
+    // Get object from SpriterObjects.json
+    for (var i = 0; i < $dataSpriterObjects.length; i++) {
+      if ($dataSpriterObjects[i]._name == spriteObjectName) {
+        var content = $dataSpriterObjects[i];
+      }
     }
-    else {
-		if (!variableMap.hasOwnProperty("child_" + String(character._name))) {
-            variableMap._children["child_" + String(character._name)] = {};
-        }
-        spriterVar = variableMap._children["child_" + String(character._name)];
-        spriterVar.tag = [];
-        spriterVar.var = {};
+    
+    // Add new SpriterCharacter as child of this character
+    children.push(new Game_SpriterCharacter(content, parentSprite, children.length))
+
+    // Make request for Spriteset_Map to make a new Sprite for the Child
+    this._spriter._spriteRequests.push(children[children.length-1]);
+
+    this.removeSkinPart(parentSprite);
+
+    // Save new changes in global variable
+    var globalInfo = this.getCharacterGlobal();
+    globalInfo._spriteChildren =  children;
+    
+};
+
+Game_CharacterBase.prototype.removeChildSprite = function(spriteParentName) {
+  this.forceUpdate = true;
+  var children = this._spriter._spriteChildren;
+
+  for (var i = 0; i < children.length; i++) {
+    if (children[i]._spriteParent == spriteParentName) {
+      children.splice(i,1);
     }
-    return spriterVar;	
+  }
+
+  this._spriter._spriteRemoveRequests.push(spriteParentName);
+
+  var globalInfo = this.getCharacterGlobal();
+  globalInfo._spriteChildren =  children;
+
+};
+
+Game_CharacterBase.prototype.getCharacterGlobal = function() {
+  if (this instanceof Game_Player) {
+    return $infoSpriter.player
+  }
+  else if (this instanceof Game_Follower) {
+    return $infoSpriter.followers["follower_" + this._memberIndex]
+  }
+  else if (this instanceof Game_Event) {
+    this.eventDataExists();
+    return $infoSpriter.maps["map_" + $gameMap._mapId]["event_" + this._eventId]
+  }
+};
+
+// Creates Event Data for unvisited Maps
+Game_CharacterBase.prototype.eventDataExists = function () {
+    var map = $infoSpriter.maps["map_" + $gameMap._mapId];
+    if (!map.hasOwnProperty("event_" + String(this._eventId))) {
+      map["event_" + String(this._eventId)] = {};
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -412,22 +445,22 @@ Game_CharacterBase.prototype.initGlobalVarsForMap = function (character) {
 //-------------------------------------------------------------------------------------------------------------
 var spriter_alias_Game_Player_refresh = Game_Player.prototype.refresh;
 Game_Player.prototype.refresh = function() {
-    spriter_alias_Game_Player_refresh.call(this);
-    var playerNotes = $dataActors[$gameParty.leader()._actorId].meta;
-    if (playerNotes.hasOwnProperty("Spriter")) {
-    	this.setAnimationInfo(this, null, true);
-    }
+  spriter_alias_Game_Player_refresh.call(this);
+  var playerNotes = $dataActors[$gameParty.leader()._actorId].meta;
+  if (playerNotes.hasOwnProperty("Spriter")) {
+  	this.setAnimationInfo(this, null, true);
+  }
 };
 
 var spriter_alias_Game_Follower_refresh = Game_Follower.prototype.refresh;
 Game_Follower.prototype.refresh = function() {
-    spriter_alias_Game_Follower_refresh.call(this);
-    if (this.actor()) {
-		var followerNotes = $dataActors[this.actor()._actorId].meta;
-	    if (followerNotes.hasOwnProperty("Spriter")) {
-			this.setAnimationInfo(this, null, this.isVisible());
-	    }
+  spriter_alias_Game_Follower_refresh.call(this);
+  if (this.actor()) {
+	var followerNotes = $dataActors[this.actor()._actorId].meta;
+    if (followerNotes.hasOwnProperty("Spriter")) {
+		this.setAnimationInfo(this, null, this.isVisible());
     }
+  }
 };
 
 var spriter_alias_Game_Event_refresh = Game_Event.prototype.refresh;
@@ -453,7 +486,9 @@ var spriter_alias_Game_Party_addActor = Game_Party.prototype.addActor;
 Game_Party.prototype.addActor = function(actorId) {
     spriter_alias_Game_Party_addActor.call(this, actorId);
     if (!this._actors.contains(actorId)) {
-    	$gameVariables._data[spriterVarId]._followerRequests.push(actorId);
+
+      // Adds a request to create Spriter Character for Actor.
+    	$infoSpriter._followerRequests.push(actorId);
     }
         
 };
@@ -469,7 +504,6 @@ var spriter_alias_Spriteset_Map_createCharacters = Spriteset_Map.prototype.creat
 Spriteset_Map.prototype.createCharacters = function() {
 	spriter_alias_Spriteset_Map_createCharacters.call(this);    
    	this.createSpriterCharacters();
-   	this.createGlobalSpriterCharacters();
 };
 
 Spriteset_Map.prototype.createSpriterCharacters = function() {
@@ -477,8 +511,8 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
 
 	// Creating Spriter Event
     $gameMap.events().forEach(function(event) {
-		if (this.hasSpriterSprite(event)) {
-			this._spriterCharacterSprites.push(new Spriter_Character(event));
+		  if (this.hasSpriterSprite(event)) {
+        this._spriterCharacterSprites.push(new Spriter_Character(event));
 	    }
     }, this);
 
@@ -501,100 +535,33 @@ Spriteset_Map.prototype.createSpriterCharacters = function() {
 
 };
 
-Spriteset_Map.prototype.createGlobalSpriterCharacters = function () {
-    if ($gameVariables._data[spriterVarId]) {
-	    this._childSprites = [];
-		var playerChildren = $gameVariables._data[spriterVarId].player._children; 
-	    var followerChildren = $gameVariables._data[spriterVarId].followers._children; 
-		var eventChildren = $gameVariables._data[spriterVarId].maps['map_' + $gameMap._mapId]._children; 
-	   	for (var i = 0; i < playerChildren.length; i++) {
-	   		this.setChildAnimationInfo(playerChildren[i]);
-	   		this._childSprites.push(new Spriter_Character(playerChildren[i]));
-	   	}
-	   	for (var j = 0; j < eventChildren.length; j++) {
-	   		this.setChildAnimationInfo(eventChildren[j]);
-	   		this._childSprites.push(new Spriter_Character(eventChildren[j]));
-	   	}
-	    for (var k = 0; k < followerChildren.length; k++) {
-	        this.setChildAnimationInfo(followerChildren[k]);
-	        this._childSprites.push(new Spriter_Character(followerChildren[k]));
-	    }
-	}
-};
-
-
-Spriteset_Map.prototype.setChildAnimationInfo = function(child) {
-    var variable = $gameVariables._data[spriterVarId];
-    var variableMap = variable.maps["map_" + String($gameMap._mapId)];
-    if (!variableMap.hasOwnProperty("child_" + String(child._name))) {
-        variableMap._children["child_" + String(child._name)] = {};
-    }
-    globalInfo = variableMap._children["child_" + String(child._name)];
-    globalInfo.tag = [];
-    globalInfo.var = {};
-    child._spriter._skeleton = globalInfo._skeleton || child._spriter._skeleton;
-    child._spriter._skin = globalInfo._skin || child._spriter._skin;
-    child._spriter._speed = globalInfo._speed || child._spriter._speed;
-    child._spriter._stop = globalInfo._stop || false;
-    child._spriter.tag = globalInfo.tag || [];
-    child._spriter.var = globalInfo.var || {};
-};
-
-
-
 var spriter_alias_Spriteset_Map_update = Spriteset_Map.prototype.update;
 Spriteset_Map.prototype.update = function() {
 	spriter_alias_Spriteset_Map_update.call(this);
-	if ($gameVariables._data[spriterVarId]) {
-		this.updateChildren();
+	if ($infoSpriter) {
 		this.updateFollowers();
 	}
 };
 
-// Checks Global Variable for Sprite Requests from Plugin Commands.
-// The Spriter object that matches the name in the request is pulled from SpriterObject.JSON
-// And used for a new Sprite.
-Spriteset_Map.prototype.updateChildren = function() {
-	var spriteRequests = $gameVariables._data[spriterVarId]._spriteRequests;
-	for (var i = 0; i < spriteRequests.length; i++) {
-		for (var j = 0; j < $dataSpriterObjects.length; j++) {
-			if (spriteRequests[i].sprite == $dataSpriterObjects[j]._name) {
-				var character =  $dataSpriterObjects[j];
-		        this.setChildAnimationInfo(character);
-				this._childSprites.push(new Spriter_Character(character));
-				if (spriteRequests[i].parent == 'player') {
-					$gameVariables._data[spriterVarId].player._children.push(character);
-				}
-				else if (spriteRequests[i].parent == 'follower') {
-					$gameVariables._data[spriterVarId].followers._children.push(character);
-				}
-		    	$gameVariables._data[spriterVarId]._childSprites = this._childSprites;
-		    	break;	
-			}
-		}
-			
-	}
-	$gameVariables._data[spriterVarId]._spriteRequests = [];
-};
-
+// Checks for requests to add Spriter Character
 Spriteset_Map.prototype.updateFollowers = function() {
-	var followerRequests = $gameVariables._data[spriterVarId]._followerRequests;
+	var followerRequests = $infoSpriter._followerRequests;
 	for (var i = 0; i < followerRequests.length; i ++) {
 		var followerId = followerRequests[i];
 		var followerNotes = $dataActors[followerId].meta;
-    	if (followerNotes.hasOwnProperty("Spriter")) {
-    		for (var j = 0; j < $gamePlayer.followers()._data.length; j++) {
-    			var follower = $gamePlayer.followers()._data[j];
-				if (follower.actor() && follower.actor()._actorId == followerId) {
-		            this._spriterCharacterSprites.push(new Spriter_Character(follower));
-		            var index = this._spriterCharacterSprites.length - 1;
-		            this._tilemap.addChild(this._spriterCharacterSprites[index]);
-					       $gameVariables._data[spriterVarId]._followerRequests = [];
-
-		        }
-    		}
-        }  
-	}
+    if (followerNotes.hasOwnProperty("Spriter")) {
+      for (var j = 0; j < $gamePlayer.followers()._data.length; j++) {
+        var follower = $gamePlayer.followers()._data[j];
+        if (follower.actor() && follower.actor()._actorId == followerId) {
+          this._spriterCharacterSprites.push(new Spriter_Character(follower));
+          this.createSpriterChildren(folloewr);
+          var index = this._spriterCharacterSprites.length - 1;
+          this._tilemap.addChild(this._spriterCharacterSprites[index]);
+          $infoSpriter._followerRequests = [];
+        }
+      }
+    }     
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -625,37 +592,36 @@ Spriteset_Map.prototype.hasSpriterSprite = function (character) {
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
-// New Sprite Class for Spriter
+// Spriter_Base
 //*************************************************************************************************************
+// Superclass for Spriter_Character and Spriter_Battler.
+// Deals with the core functions of the Character/Actor animation.
 //-------------------------------------------------------------------------------------------------------------
+
+function Spriter_Base() {
+    this.initialize.apply(this, arguments);
+}
+
+Spriter_Base.prototype = Object.create(Sprite_Base.prototype);
+Spriter_Base.prototype.constructor = Spriter_Base;
 
 //-------------------------------------------------------------------------------------------------------------
 // Initializing Sprite
 //-------------------------------------------------------------------------------------------------------------
-function Spriter_Character() {
-    this.initialize.apply(this, arguments);
-}
-
-Spriter_Character.prototype = Object.create(Sprite_Base.prototype);
-Spriter_Character.prototype.constructor = Spriter_Character;
-
-Spriter_Character.prototype.initialize = function(character) {
+Spriter_Base.prototype.initialize = function(character) {
     Sprite_Base.prototype.initialize.call(this);
     this.initMembers();
     this.setCharacter(character);
     this.getAnimation(this._skeleton);
     this.initSprite();
     this.displaceSprite();
-    this.start();
 };
 
-Spriter_Character.prototype.initMembers = function() {
+Spriter_Base.prototype.initMembers = function() {
     this.anchor.x = 0.5;
     this.anchor.y = 1;
     this._character = null;
     this._animationId = 0;
-    this._balloonDuration = 0;
-    this._tilesetId = 0;
     this._animation = null;
     this._pathMain = null;
     this._pathTime = null;
@@ -664,7 +630,7 @@ Spriter_Character.prototype.initMembers = function() {
     this._sprite = null;
     this._skin = null;
     this._skinParts = [];
-    this._spriteChildren = null;
+    this._childrenSprites = [];
     this._skeleton = null;
     this._speed = 1;
     this._cellX = null;
@@ -672,85 +638,36 @@ Spriter_Character.prototype.initMembers = function() {
     this._spriteMaskX = null;
     this._spriteMaskY = null;
     this._repeat = false;
-    this._resetter = false;
-    this._recovery = "snap";
-    this._globalAnimationInfo = null;
     this._spriteMask = {};
     this._limitCounter = 0;
     this._spriteType = '';
 };
 
-Spriter_Character.prototype.setCharacter = function(character) {
+Spriter_Base.prototype.setCharacter = function(character) {
 
     //Getting Character Meta
     this._character = character;
     this._spriteType = this._character instanceof Game_CharacterBase ? 'character' : 'object';
-    this._animationId = (character._direction - 2) / 2;
     this._skeleton = this._character._spriter._skeleton;
     this._skin = this._character._spriter._skin;
     this._skinParts = this._character._spriter._skinParts;
-    this._spriteChildren = this._character._spriter._spriteChildren;
     this._cellX = Number(this._character._spriter._cellX);
     this._cellY = Number(this._character._spriter._cellY);
     this._speed = Number(this._character._spriter._speed);
-    this._recovery = this._character._spriter._recovery;
     this._stop = this._character._spriter._stop;
     this._spriteMask.available = this._character._spriter._spriteMask.available;
     if (this._spriteMask.available) {
-    	this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
-		this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
-		this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
-		this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
-    }
-
-
-    //Getting Globals
-    if (this._character.constructor === Game_Player) { 
-        this._globalAnimationInfo = $gameVariables._data[spriterVarId].player;
-    }
-    else if (this._character.constructor === Game_Event) {
-        var map = String(this._character._mapId);
-        var id = String(this._character._eventId);
-        this._globalAnimationInfo = $gameVariables._data[spriterVarId].maps["map_" + map]["event_" + id];
-    }
-    else if (this._character.constructor === Game_Follower) {
-        var folId = String(this._character._memberIndex);
-        this._globalAnimationInfo = $gameVariables._data[spriterVarId].followers["follower_" + folId];
-    }
-    else {
-		var map = String($gameMap._mapId);
-        var name = String(this._character._name);
-        this._globalAnimationInfo = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
-    }
-
-    // Initializing animation components
-    if (!this._globalAnimationInfo.hasOwnProperty("bones")) {
-        this._globalAnimationInfo.bones = {};
-    }
-    if (!this._globalAnimationInfo.hasOwnProperty("objects")) {    
-        this._globalAnimationInfo.objects = {};
-    }
-    if (!this._globalAnimationInfo.hasOwnProperty("tag")) {    
-        this._globalAnimationInfo.tag = [];
-    }
-    if (!this._globalAnimationInfo.hasOwnProperty("var")) {    
-        this._globalAnimationInfo.var = {};
-    }
-    if (this._character._direction == this._globalAnimationInfo.dir) {
-        this._animationFrame = this._globalAnimationInfo.frame || 0;
-        this._key = this._globalAnimationInfo.key || 0;        
-    }
-    else {
-        this._animationFrame = 0;
-        this._key = 0;
+      this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
+  		this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
+  		this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
+  		this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
     }
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Get animation from $spriterAnimations
 //-------------------------------------------------------------------------------------------------------------
-
-Spriter_Character.prototype.getAnimation = function(name) {
+Spriter_Base.prototype.getAnimation = function(name) {
     var property = name + ".scml";
     this._animation = $spriterAnimations[property];
 };
@@ -758,7 +675,7 @@ Spriter_Character.prototype.getAnimation = function(name) {
 //-------------------------------------------------------------------------------------------------------------
 // Set sprite's objects, bones and layers
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.initSprite = function() {
+Spriter_Base.prototype.initSprite = function() {
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
     this._sprite = new Sprite();
     this._group = new PIXI.display.Group(0, true);
@@ -780,7 +697,7 @@ Spriter_Character.prototype.initSprite = function() {
             this._element[i].parent = null;
         }
         else {
-            this._element[i] = new Sprite();
+            this._element[i] = new PIXI.Sprite();
             this._element[i].parent = null;
             this._element[i].removeChildren();
             this._element[i].parentGroup = this._group;
@@ -811,154 +728,29 @@ Spriter_Character.prototype.initSprite = function() {
     }
     this._character._spriter._sizeX = this.scale.x;
     this._character._spriter._sizeY = this.scale.y;
+
+
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Moves Sprite from 0,0 point to -width/2,-height point. 
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.displaceSprite = function() {
+Spriter_Base.prototype.displaceSprite = function() {
     this._sprite.x = -this._cellX/2;
     this._sprite.y = -this._cellY;
 };
 
-//-------------------------------------------------------------------------------------------------------------
-// Draw First Sprite. 
-// In case the Sprite has been used before, this._globalAnimationIfo will replace animation values
-//-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.start = function() {
-    this.setInitialCharacter();
-};
 
-Spriter_Character.prototype.setInitialCharacter = function() {
-
-	var item;
-    this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
-    this._pathTime = this._animation.entity.animation[this._animationId].timeline;
-
-    // Set Bones
-    if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
-
-        //Setting Bone Inheritance
-        for(var j = 0; j < this._pathMain[this._key].bone_ref.length; j++) {
-            this.updateBoneInheritance(j);
-        
-        }
-
-        // Setting Bone Values
-        for (var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
-        	id = Number(this._pathMain[this._key].bone_ref[n].timeline);
-        	item = this._element[id];
-        	item.timelineId = id;
-        	item.key = Number(this._pathMain[this._key].bone_ref[n].key); // Id of bone key for this._key
-            item.currentKey = this._pathTime[item.timelineId].key[item.key];
-            item.type = "bone";
-            this.setInitialElements(n, item);
-        }
-    }
-
-    if (this._pathMain[this._key].hasOwnProperty('object_ref')) {
-
-        //Going through all Objects for Current Key
-        for (var i = 0; i < this._pathMain[this._key].object_ref.length; i++){
-        	id = Number(this._pathMain[this._key].object_ref[i].timeline);
-        	item = this._element[id];
-        	item.timelineId = id;
-        	item.key = Number(this._pathMain[this._key].object_ref[i].key); // Id of bone key for this._key
-            item.currentKey = this._pathTime[item.timelineId].key[item.key];
-            item.type = "object";
-        	this.setInitialElements(i, item);
-
-        }
-    }
-};
-
-Spriter_Character.prototype.setInitialElements = function(n, item) {
-
-    var globals = this._globalAnimationInfo;
-    var elementGlobal;
-    var w;
-    var h;
-    var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
-    var folderId = Number(element.folder);
-	var fileId = Number(element.file);
-
-    if (item.type === "object") {
-
-    	// Reset Inheritance
-	    if (!globals.objects.hasOwnProperty("object_" + Number(item.timelineId))) {
-        	globals.objects["object_" + Number(item.timelineId)] = {};
-    	}
-    	elementGlobal = globals.objects["object_" + Number(item.timelineId)];
-		
-		// Set Inheritance
-	    if (this._pathMain[this._key].object_ref[n].hasOwnProperty('parent')) {
-	    	parentMainId = this._pathMain[this._key].object_ref[n].parent;
-	    	parentTimeId = this.pathTimeId("bone", parentMainId);
-	        this._element[parentTimeId].addChild(item);
-	    } 
-	    else {
-            this._sprite.addChild(item);
-	        
-	    }
-
-	    w = Number(this._animation.folder[folderId].file[fileId].width);
-	    h = Number(this._animation.folder[folderId].file[fileId].height);
-
-	}
-	else {
-	    if (!globals.bones.hasOwnProperty("bone_" + Number(item.timelineId))) {
-	        globals.bones["bone_" + Number(item.timelineId)] = {};
-	    }
-	    elementGlobal = globals.bones["bone_" + Number(item.timelineId)];
-	}
-
-    var ex = Number(element.x) || 0;
-    var ey = Number(element.y) || 0;
-    var er = Number(element.angle) || 0;
-    var esx = element.scale_x || 1;
-    esx = Number(esx);
-    var esy = element.scale_y || 1;
-    esy = Number(esy);
-    var x = elementGlobal.x || ex;
-    var y = elementGlobal.y || -ey;
-    item.move(x, y);
-    item.rotation = elementGlobal.r || -er * Math.PI / 180;
-    item.scale.x = elementGlobal.sx || esx;
-    item.scale.y = elementGlobal.sy || esy;
-
-    if (item.type === "object") {
-
-	    var eax = Number(element.pivot_x) || 0;
-	    var eay = 1 - Number(element.pivot_y) || 0;
-	    var ea = element.a || 1;
-	    ea = Number(ea);
-	    var z = Number(this._pathMain[this._key].object_ref[n].z_index);
-
-    	item.alpha = elementGlobal.a || ea;
-		item.anchor.x = elementGlobal.ex || eax;
-	    item.anchor.y = elementGlobal.ey || eay;		
-		item.zIndex = elementGlobal.z || z;
-
-	   	this.updateBitmaps(item);
-
-		// Set Inherited Sprite
-        
-    	this.controlChildSprites(item.timelineId, w, h);
-    }
-};
 
 //-------------------------------------------------------------------------------------------------------------
 // Updating Sprite
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.update = function() {
+Spriter_Base.prototype.update = function() {
     Sprite_Base.prototype.update.call(this);
-    this.updateDirection();
     this.updateSprite();
-    this.updatePosition();
-    this.updateOther();
 };
 
-Spriter_Character.prototype.updateDisplay = function() {
+Spriter_Base.prototype.updateDisplay = function() {
     if (showFrames) {
         this._infoDisplaySprite.bitmap.clear();
         this._infoDisplaySprite.bitmap.drawText("key: " + this._key, 0, 10, 100, 1, 'left');
@@ -966,33 +758,37 @@ Spriter_Character.prototype.updateDisplay = function() {
     }
 };
 
+Spriter_Base.prototype.resetSpriterSprite = function() {
+    this._character._spriter.forceUpdate = true;
+    this._animationFrame = 0;
+    this._key = 0;
+    this._character._spriter.frame = 0;
+    this._character._spriter.key = 0;
+    this.refreshSpriterSprite();
+};
+
+Spriter_Base.prototype.refreshSpriterSprite = function() {
+    this.removeChildren();
+    this.getAnimation(this._skeleton);
+    delete this._sprite;
+    delete this._layer;
+    delete this._group;
+    this.initSprite();
+    this.start();
+    this.displaceSprite();
+    this._animLength = Number(this._animation.entity.animation[this._animationId].length);
+    this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
+    this._repeat = eval(this._repeat);   
+    this.updateDisplay();
+};
+
 //-------------------------------------------------------------------------------------------------------------
 // Change animation according to character direction and reser sprite
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.updateDirection = function() {
+Spriter_Base.prototype.updateDirection = function() {
     if ((this._character._direction - 2) / 2 != this._animationId && !this._stop){
-        this._character._spriter.forceUpdate = true;
         this._animationId = (this._character._direction - 2) / 2;
-        this._animationFrame = 0;
-        this._key = 0;
-        this._globalAnimationInfo.key = this._key; 
-        this._globalAnimationInfo.frame = 0;
-        this._globalAnimationInfo.key = 0;
-        this.removeChildren();
-        this._character._spriter.var = {};
-        this._character._spriter.tag = [];
-        this._globalAnimationInfo.var = {};
-        this._globalAnimationInfo.tag = [];
-        this.getAnimation(this._skeleton);
-        delete this._sprite;
-        delete this._layer;
-        delete this._group;
-        this.initSprite();
-        this.displaceSprite();
-        this._animLength = Number(this._animation.entity.animation[this._animationId].length);
-        this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
-        this._repeat = eval(this._repeat);  
-        this.updateDisplay();           
+        this.resetSpriterSprite();         
     }
 };
 
@@ -1000,7 +796,7 @@ Spriter_Character.prototype.updateDirection = function() {
 //-------------------------------------------------------------------------------------------------------------
 // Check elements of Sprite that should be updated according to the character's condition
 //------------------------------------------------------------------------------------------------------------- 
-Spriter_Character.prototype.updateSprite = function() {
+Spriter_Base.prototype.updateSprite = function() {
     if (!this._stop) {
         if (!limitProcessCheck || this._limitCounter === 0) {
     	    this.checkChanges();
@@ -1013,7 +809,7 @@ Spriter_Character.prototype.updateSprite = function() {
         else {
             this._limitCounter++;
         }
-        if (this.isMoving(this._character)) {
+        if (this.isItemMoving(this._character)) {
             this._resetter = false;
             this.updateFrame();
         }
@@ -1022,12 +818,12 @@ Spriter_Character.prototype.updateSprite = function() {
         else if (this._recovery == "snap") {
 
             // Character movement stops after the completion of a step
-            // this._resetter resets the animation if !this._character.isMoving() for more that one update loop.
+            // this._resetter resets the animation if !this._character.isItemMoving() for more that one update loop.
             if (this._resetter) {
                 this._key = 0;
                 this._animationFrame = 0;
-                this._globalAnimationInfo.frame = 0;
-                this._globalAnimationInfo.key = 0;
+                this._character._spriter.frame = 0;
+                this._character._spriter.key = 0;
         		this.updateDisplay();
             }
             else {
@@ -1041,58 +837,40 @@ Spriter_Character.prototype.updateSprite = function() {
     this.checkReset();
 };
 
-Spriter_Character.prototype.checkReset = function() {
+Spriter_Base.prototype.checkReset = function() {
     if (this._character.resetAnimation) {
         this._key = 0;
         this._animationFrame = 0;
-        this._globalAnimationInfo.key = this._key; 
-        this._globalAnimationInfo.frame = this._animationFrame;
+        this._character._spriter.key = this._key; 
+        this._character._spriter.frame = this._animationFrame;
         this.updateDisplay();
         this._character.resetAnimation = false;
     }
 };
 
-Spriter_Character.prototype.isMoving = function(character) {
-	return character._stepAnime || character.isMoving() && character._walkAnime;
+Spriter_Base.prototype.isItemMoving = function(character) {
+  if (this instanceof Spriter_Character) {
+      return character._stepAnime || character.isMoving() && character._walkAnime;
+  }
+  else {
+    return true;
+  }
 };
 
-Spriter_Character.prototype.checkChanges = function() {
+Spriter_Base.prototype.checkChanges = function() {
 
     if (this._skeleton !== this._character._spriter._skeleton) {
         // Resetting the whole Sprite
-        this._character._spriter.forceUpdate = true;
-    	this._skeleton = this._character._spriter._skeleton;
+        this._skeleton = this._character._spriter._skeleton;
         this._skin = this._character._spriter._skin;
-        this._animationFrame = 0;
-        this._key = 0;
-        this._globalAnimationInfo.key = this._key; 
-        this._globalAnimationInfo.frame = 0;
-        this._globalAnimationInfo.key = 0;
-        this.removeChildren();
-        this._character._spriter.var = {};
-        this._character._spriter.tag = [];
-        this._globalAnimationInfo.var = {};
-        this._globalAnimationInfo.tag = [];
-        this.getAnimation(this._skeleton);
-        delete this._sprite;
-        delete this._layer;
-        delete this._group;
-        this.initSprite();
-        this.start();
-        this.displaceSprite();
-        this._animLength = Number(this._animation.entity.animation[this._animationId].length);
-        this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
-        this._repeat = eval(this._repeat);   
-        this.updateDisplay();
+        this.resetSpriterSprite();
     }
     if (this._skin !== this._character._spriter._skin) {
         this._skin = this._character._spriter._skin;
     }
     if (this._skinParts !== this._character._spriter._skinParts) {
         this._skinParts = this._character._spriter._skinParts;
-    }
-    if (this._spriteChildren !== this._character._spriter._spriteChildren) {
-        this._spriteChildren = this._character._spriter._spriteChildren;
+        this.refreshSpriterSprite();
     }
     if (this._cellX !== this._character._spriter._cellX) {
         this._cellX = Number(this._character._spriter._cellX);
@@ -1118,7 +896,7 @@ Spriter_Character.prototype.checkChanges = function() {
 //-------------------------------------------------------------------------------------------------------------
 // When this._speed changes sign, this._key is changed.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.fixKeys = function () {
+Spriter_Base.prototype.fixKeys = function () {
 	if (this._speed < 0 && Number(this._character._spriter._speed) > 0) {
 		if (this._key === 0 && this._repeat) {
 			this._key = this._pathMain.length - 1;
@@ -1145,7 +923,7 @@ Spriter_Character.prototype.fixKeys = function () {
 // Updates frame. If mid key the frame increases by this._speed. If at key, the frame takes the key time.
 // If animation is over, frame does not change or it resets to 0 according to this._repeat.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.updateFrame = function() {
+Spriter_Base.prototype.updateFrame = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     var speed = this._speed;
     var nextKeyTime;
@@ -1229,15 +1007,13 @@ Spriter_Character.prototype.updateFrame = function() {
             }  
         }
     }
-    this._globalAnimationInfo.key = this._key; 
-    this._globalAnimationInfo.frame = this._animationFrame;
     this.updateDisplay();
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Update Bone and Object x/y/angle/opacity/scale/anchor/inheritance
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.setCharacterSprite = function() {
+Spriter_Base.prototype.setCharacterSprite = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
@@ -1247,8 +1023,10 @@ Spriter_Character.prototype.setCharacterSprite = function() {
         //Going through all Bones for Current Key
         for(var j = 0; j < this._pathMain[this._key].bone_ref.length; j++) {
             item = this.getItemForTime("bone", j);
+
             //Setting Bone Inheritance
             this.updateBoneInheritance(j);
+
             //Setting Bone Values
             this.setUpdateType(item);
         }
@@ -1259,8 +1037,10 @@ Spriter_Character.prototype.setCharacterSprite = function() {
         //Going through all Objects for Current Key
         for(var l = 0; l < this._pathMain[this._key].object_ref.length; l++){
             item = this.getItemForTime("object", l);
+
             //Setting Object Inheritance
         	this.objectInheritanceUpdate(l);
+
             //Setting Object Values
             this.setUpdateType(item);
         }
@@ -1274,7 +1054,7 @@ Spriter_Character.prototype.setCharacterSprite = function() {
 };
 
 // Clears items which are not used for current Key
-Spriter_Character.prototype.refreshSprite = function() {
+Spriter_Base.prototype.refreshSprite = function() {
     currentKeyTime = Number(this._pathMain[this._key].time) || 0;
     if (this._speed > 0 && this._animationFrame == currentKeyTime) {
         for (var i = 0; i < this._element.length; i++) {
@@ -1289,7 +1069,8 @@ Spriter_Character.prototype.refreshSprite = function() {
 };
 
 // Determines if animation frame is in item's Key, or between Keys. 
-Spriter_Character.prototype.setUpdateType = function(item) {
+Spriter_Base.prototype.setUpdateType = function(item) {
+
     if (this._animationFrame == item.currentKeyTime) {
         this.setOnKey(item);
     }
@@ -1299,18 +1080,18 @@ Spriter_Character.prototype.setUpdateType = function(item) {
     else if (!this.isAnimated(item)) {
         this.setOnKey(item);
     }
-    else if (this.isBetweenKeys(item) && this.isMoving(this._character) && this.isAnimated(item)) {
+    else if (this.isBetweenKeys(item) && this.isItemMoving(this._character) && this.isAnimated(item)) {
         this.tween(item);
     }
 };
 
 // Returns Id of item from Timeline. Timeline Id is static and can be used for this._element
-Spriter_Character.prototype.pathTimeId = function(type, i) {
+Spriter_Base.prototype.pathTimeId = function(type, i) {
 	return Number(this._pathMain[this._key][type + "_ref"][i].timeline);
 };
 
 // Assigns type, times, and other properties to item.
-Spriter_Character.prototype.getItemForTime = function(type, i) {
+Spriter_Base.prototype.getItemForTime = function(type, i) {
 	var item;
 	id = this.pathTimeId(type, i);
 	if (type == "bone") {
@@ -1342,8 +1123,10 @@ Spriter_Character.prototype.getItemForTime = function(type, i) {
     	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[0].time) || 0;
 	}
 
-	item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
-    item.nextKeyTime = (item.nextKey.time) || 0;
+	 item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
+   item.nextKeyTime = Number(item.nextKey.time) || 0;
+
+    this.updateItemTagsAndVars(item);
 
     // True since this Item exists for the span of the current Key
     item.usedForKey = true;
@@ -1351,8 +1134,68 @@ Spriter_Character.prototype.getItemForTime = function(type, i) {
     return item;
 };
 
+Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
+  if (!item.vars) {
+    item.vars = {};
+  }
+  if (!item.tags) {
+    item.tags = [];
+  }
+  if (this._pathTime[item.timelineId].hasOwnProperty('meta')) {
+  	var meta = this._pathTime[item.timelineId].meta;
+  	if (meta.hasOwnProperty('tagline')) {
+  		for (var i = 0; i < meta.tagline.key.length; i++) {
+    		var tagKey = meta.tagline.key[i]
+    		var tagTime = Number(tagKey.time) || 0
+    		if (tagTime == this._animationFrame) {
+          item.tags = [];
+    			for (var j = 0; j < tagKey.tag.length; j++) {
+    				var tagId = Number(tagKey.tag[j].t);
+    				var tagName = this._animation.tag_list.i[tagId].name;
+    				item.tags.push(tagName);
+    			}
+    		}
+    	}
+  	}
+  	else if (meta.hasOwnProperty('varline')) {
+  		for (var i = 0; i < meta.varline.key.length; i++) {
+  			for (var j = 0; j < varKey.var.length; j++) {
+  				var varId = Number(varKey.var[j].def);
+  				var variable = this._animation.obj_info[item.obj].var_defs.i[varId];
+  				for (var k = 0; k < varKey.var[j].key.length; k++) {
+  					var varKey = meta.varline.key[j].key[k];
+  					var varTime = Number(varKey.time) || 0
+  					if (varTime == this._animationFrame) {
+  						if (variable.type == 'int') {
+  							item.vars[variable.name] = Number(varKey.val);
+  						}
+  						else if (variable.type == 'float') {
+  							item.vars[variable.name] = Number(varKey.val);
+  						}
+  						else if (variable.type == 'string') {
+  							item.vars[variable.name] = varKey.val;
+  						}
+  					}
+  					else {
+  						if (variable.type == 'int') {
+  							item.vars[variable.name] = Number(variable.default);
+  						}
+  						else if (variable.type == 'float') {
+  							item.vars[variable.name] = Number(variable.default);
+  						}
+  						else if (variable.type == 'string') {
+  							item.vars[variable.name] = variable.default;
+  						}
+  					}
+  				}
+  			}
+    	}
+  	}
+  }
+};
+
 // Determines Next Key according to this._speed sign
-Spriter_Character.prototype.getNextKey = function(item) {
+Spriter_Base.prototype.getNextKey = function(item) {
 	if (this._speed > 0) {
 		if (item.currentKeyTime == item.lastKeyTime && this._repeat) {
 			return 0;
@@ -1379,7 +1222,7 @@ Spriter_Character.prototype.getNextKey = function(item) {
 };
 
 // Checks if item has more than one Key (has change in values, ergo, animation)
-Spriter_Character.prototype.isAnimated = function(item) {
+Spriter_Base.prototype.isAnimated = function(item) {
 	if (item.type == "bone") {
 		id = item.timelineId;
 		return this._pathTime[id].key.length > 1;
@@ -1391,7 +1234,7 @@ Spriter_Character.prototype.isAnimated = function(item) {
 };
 
 
-Spriter_Character.prototype.isBetweenKeys = function(item) {
+Spriter_Base.prototype.isBetweenKeys = function(item) {
 	if (this._speed > 0) {
 		if (this._animationFrame < item.lastKeyTime) {
 			return this._animationFrame > item.currentKeyTime && this._animationFrame < item.nextKeyTime;
@@ -1416,19 +1259,7 @@ Spriter_Character.prototype.isBetweenKeys = function(item) {
 //-------------------------------------------------------------------------------------------------------------
 // Updates item according to key info.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.setOnKey = function(item) {
-    var globals = this._globalAnimationInfo;
-    if (item.type === "bone") {
-    	if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
-        	globals.bones["bone_" + String(item.timelineId)] = {};
-    	}
-	}
-	else {
-	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
-    	    globals.objects["object_" + String(item.timelineId)] = {};
-    	}
-	}
-
+Spriter_Base.prototype.setOnKey = function(item) {
     var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
 
     // General Values ------------------------------------
@@ -1443,14 +1274,13 @@ Spriter_Character.prototype.setOnKey = function(item) {
     sy = Number(sy);
 
     // Setting item Values for Key
-    item.move(x, -y);
+    item.x = x; 
+    item.y = -y;
     item.rotation = ((-r) * Math.PI / 180);
     item.scale.x = sx;
     item.scale.y = sy;
 
-    // ---------------------------------------------------
 
-    this.updateBitmaps(item);
 
 
     // Object-specific Values ----------------------------
@@ -1467,162 +1297,294 @@ Spriter_Character.prototype.setOnKey = function(item) {
 	    a = Number(a);
 
     	// Setting Object Values for Key
-        item.alpha = a;
+      item.alpha = a;
 	    item.anchor.x = ax;
 	    item.anchor.y = ay;
 	    
-		this.controlChildSprites(item.timelineId, w, h);
+		  this.updateChildSprites(item, w, h);
     }
-
     // ---------------------------------------------------
 
-    // Storing Values to Global Variable 
-    this.storeToGlobal(item);
+    // Set Texture for Sprite ----------------------------
+    this.updateTexture(item);
+    // ---------------------------------------------------
+
+    //TBA
+    // Check Tags for Sprite Changes ---------------------
+    //this.setFromMeta(item);
+    // ---------------------------------------------------
+
 };
 
+// TBA
+// Spriter_Base.prototype.setFromMeta = function(item) {
+//   if (item.tags) {
+//     for (var i = 0; i < item.tags.length; i++) {
+//     }
+//   }
+// };
+
 // Assigns the correct image for object / draws bitmap for bone.
-Spriter_Character.prototype.updateBitmaps = function (item) {
+Spriter_Base.prototype.updateTexture = function (item) {
 
 	// Object Bitmaps / Character Parts
 	if (item.type === "object") {
-    	var object = item.currentKey.object;
-	    var folderId = Number(object.folder);
-	    var fileId = Number(object.file);
-	    var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
-	    var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
-	    fileName = fileName.replace(".png", '');
-	    var skin = this._skin;
-	    var skinParts = this._skinParts;
-        var path = "Spriter/"+ skin + "/" + fileName;
-
-        // Check for Skin Parts
-        for (var j = 0; j < skinParts.length; j++){
-            if (skinParts[j].skinName == timelineName) {
-
-                // If Sprite Change is a Full Sprite, then redirect to another Skinset
-                if (skinParts[j].fullSprite) {
-                    skin = skinParts[j].skinSet;
-                    path = "Spriter/"+ skinParts[j].skinSet + "/" + fileName;
-                }
-
-                // If not, then replace with an imagee from Single Bitmaps
-                else {
-                    skin = "Single Bitmaps";
-                    path = "Spriter/Single Bitmaps/" + skinParts[j].skinSet;
-                    fileName = skinParts[j].skinSet;
-                }
-                break;
-            }
-        }
-
-        // Set Bitmap
-        if (this.bitmapIsPacked(path)) {
-            this.unpackBitmap(item, skin, fileName);
-        }
-        else {
-            item.bitmap = ImageManager.loadCharacter(path);
-        }
+      this.updateObjectTexture(item);
 	}
+
 	// Bone Bitmaps / Skeleton Display
 	else {
-	    if (showSkeleton || this._character._spriter._showSkeleton) {
-	        var boneId = Number(this._pathTime[item.timelineId].obj);
-	        var w = Number(this._animation.entity.obj_info[boneId].w);
-	        var h = 4;
-	        item.bitmap = new Bitmap(w, h);
-	        item.bitmap.fillRect(0, -2, w, h, 'black');
-	        item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
-    	}
+      this.updateBoneBitmap(item);
 	}
 
 };
 
-Spriter_Character.prototype.bitmapIsPacked = function (path) {
+Spriter_Base.prototype.updateObjectTexture = function(item) {
+
+    // Determine if the texture is from Note Data or Actor equipment
+    var tagForEquipment = this.getForEquipment(item);
+    if (tagForEquipment != '' && (this._character instanceof Game_Player || this._character instanceof Game_Follower)) {
+      var i = this.loadFromEquipment(item, tagForEquipment);
+    }
+    else {
+      var i = this.loadFromNotes(item);
+    }
+
+    return i;
+};
+
+Spriter_Base.prototype.getForEquipment = function(item) {
+  if (item.tags) {
+    for (var i = 0; i < item.tags.length; i++) {
+       if (item.tags[i].contains("Equip")) {
+          return item.tags[i];
+       }
+    }
+  }
+  return '';
+};
+
+Spriter_Base.prototype.loadFromNotes = function (item) {
+  var object = item.currentKey.object;
+  var folderId = Number(object.folder);
+  var fileId = Number(object.file);
+  var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
+  var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
+  var skin = this._skin;
+  var skinParts = this._skinParts;
+  var path = "Spriter/"+ skin + "/" + fileName;
+  var i = {};
+
+  // Check for Skin Parts
+
+  for (var j = 0; j < skinParts.length; j++){
+    if (skinParts[j].originName == timelineName) {
+
+      // If Sprite Change is a Full Sprite, then redirect to another Skinset
+      if (skinParts[j].isFullSprite) {
+          skin = skinParts[j].newSkin;
+          path = "Spriter/"+ skinParts[j].newSkin + "/" + fileName;
+      }
+
+      // If not, then replace with an imagee from Single Bitmaps
+      else {
+          skin = "Single Bitmaps";
+          path = "Spriter/Single Bitmaps/" + skinParts[j].newSkin + '.png';
+          fileName = skinParts[j].newSkin + ".png";
+      }
+      break;
+    }
+  }
+
+  i.path = path;
+  i.skin = skin;
+  i.fileName = fileName;
+
+  return i;
+};
+
+Spriter_Base.prototype.loadFromEquipment = function (item, tag) {
+  var object = item.currentKey.object;
+  var folderId = Number(object.folder);
+  var fileId = Number(object.file);
+  var timelineName = this._pathTime[item.timelineId].name.replace(/\_(\d){3}/, '');
+  var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
+  var i = {};
+
+  // Determine The Equipment Item and its Notes
+  var actor = this.getActor();
+  var tagArray = tag.split(' ');
+  var equipment = this.getEquipment(tagArray[1], actor);
+
+  // If Equipement Type Empty, Return Empty Object
+  if (!equipment) {
+    return false;
+  }
+
+  // Check if Skinset or single Bitmap
+  var folder = equipment.meta.Folder || '';
+  var isFullSprite = eval(equipment.meta.IsFullSprite) || false;
+  if (isFullSprite) {
+    skin = folder + equipment.name + "/" + fileName;
+    path = "Spriter/"+ skin;
+  }
+  else {
+    skin = 'Single Bitmaps';
+    path = "Spriter/Single Bitmaps/" + folder + equipment.name;
+    fileName = equipment.name + ".png";
+  }
+
+  i.path = path;
+  i.skin = skin;
+  i.fileName = fileName;
+  return i;
+};
+
+Spriter_Base.prototype.getActor = function() {
+  if (this._character instanceof Game_Player) {
+    actorId = $gameParty.leader()._actorId;
+  }
+  else if (this._character instanceof Game_Follower) {
+    actorId =  this._character.actor()._actorId;
+  }
+  return $dataActors[actorId];
+};
+
+Spriter_Base.prototype.getEquipment = function(tag, actor) {
+  if (tag == "Weapon") {
+    var weaponId = actor.equips[0];
+    return $dataWeapons[weaponId];
+  }
+  else {
+    var armorId;
+    switch (tag) {
+      case "Shield" :
+        armorId = actor.equips[1];
+      break;
+      case "Head" :
+        armorId = actor.equips[2];
+      break;
+      case "Body" :
+        armorId = actor.equips[3];
+      break;
+      case "Accessory" :
+        armorId = actor.equips[4];
+      break;
+    }
+
+    return $dataArmors[armorId];
+  }
+
+
+}
+
+Spriter_Base.prototype.bitmapIsPacked = function (path) {
     return path.contains(texturePackerCharacter);
 };
 
-var r = 0;
-
-Spriter_Character.prototype.unpackBitmap = function (item, skin, fileName) {
+Spriter_Base.prototype.unpackTexture = function (item, skin, fileName) {
     fileName = fileName.replace(texturePackerCharacter, "");
     skin = skin.replace(texturePackerCharacter, "");
     var skinArr = skin.split("/")
     var name = skinArr[skinArr.length-1];
-    var src = ImageManager.loadCharacter("Spriter/"+ skin + "/"  + name);
     var packerData = $texturePacker[name];
-    var frame = packerData.frames[fileName + ".png"].frame;
-    var source = packerData.frames[fileName + ".png"].spriteSourceSize;
-    var sourceSize = packerData.frames[fileName + ".png"].sourceSize;
-    var isRotated = packerData.frames[fileName + ".png"].rotated;
-    if (!item.bitmap) {
-        item.bitmap = new Bitmap(sourceSize.w, sourceSize.h);
-    }
-    else {
-        item.bitmap.clear();
-    }
+    var frame = packerData.frames[fileName].frame;
+    var source = packerData.frames[fileName].spriteSourceSize;
+    var sourceSize = packerData.frames[fileName].sourceSize;
+    var isRotated = packerData.frames[fileName].rotated;
+    var texture = $spriterTextures["/" + spriteFolder + "Spriter/" + skin + "/"  + name + ".png"];
     if (isRotated) {
-        item.bitmap.bltRotate(src, frame.x, frame.y, frame.h, frame.w, source.x, source.y, -90, source.h, source.w);
+      item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.h,frame.w));
+      item.texture.rotate = 2;
     }
     else {
-        item.bitmap.bltImage(src,frame.x,frame.y,frame.w,frame.h,source.x,source.y,source.w,source.h);
+      item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.w,frame.h));
     }
+      var originX = source.x - (source.x * item.anchor.x * 2)
+      var originY = source.y - (source.y * item.anchor.y * 2)
+      item.texture.trim = new PIXI.Rectangle(originX,originY,source.w,source.h);
+
+};
+
+Spriter_Base.prototype.updateBoneBitmap = function(item) {
+  if (showSkeleton || this._character._spriter._showSkeleton) {
+    var boneId = Number(this._pathTime[item.timelineId].obj);
+    var w = Number(this._animation.entity.obj_info[boneId].w);
+    var h = 4;
+    item.bitmap = new Bitmap(w, h);
+    item.bitmap.fillRect(0, -2, w, h, 'black');
+    item.bitmap.fillRect(1,-1, w-2, h-2, 'white');
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Check if item has a Child Sprite and set inheritance
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.controlChildSprites = function(i, w, h) {
-    var timelineName = this._pathTime[this._element[i].timelineId].name.replace(/\_(\d){3}/, '');
-    var spriteChildren = this._spriteChildren;
-    for (var k = 0; k < spriteChildren.length; k++) {
-        if (spriteChildren[k].skinName == timelineName) {
-            var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
-            for (var l = 0; l < childSprites.length; l++) {
-                if (this.isChildForThis(l, k) && this.hasNoParent(l) || this.hasSameParent(l, k)) {
-                	if (!spriteChildren[k].remove) {
-                		childSprites[l].x = 0;
-	                    childSprites[l].y = 0;
-	                    childSprites[l]._sprite.x = 0 - (this._element[i].anchor.x * w);
-	                    childSprites[l]._sprite.y = 0 - (this._element[i].anchor.y * h);
-	                    this._element[i].addChild(childSprites[l]);
-	                    childSprites[l]._spriteParent = spriteChildren[k].parent;
-	                    break;	
-                	}
-                    // Removes child Sprite from character's Sprite Children and Global 
-                	else {
-            		    spriteChildren.splice(k, 1);
-                		childSprites.splice(l, 1);
-                        this._element[i].removeChildren();
-                		break;
-                	}
-                }
-            }
-        }
+Spriter_Base.prototype.updateChildSprites = function(item, w, h) {
+  this.addChildSprites(item, w, h);
+  this.removeChildSprites(item);
+};
+
+Spriter_Base.prototype.addChildSprites = function (item, w, h) {
+  var id = item.timelineId
+  var timelineName = this._pathTime[id].name.replace(/\_(\d){3}/, '');
+  var childrenSprites = this._childrenSprites;
+  var requests = this._character._spriter._spriteRequests;
+  for (var i = 0; i < requests.length; i++) {
+    if (timelineName == requests[i]._spriteParent) {
+      var pivotX = item.anchor.x * w;
+      var pivotY = item.anchor.y * h;
+      childrenSprites.push(new Spriter_Child(requests[i], pivotX, pivotY));
+      var childId = childrenSprites.length - 1;
+      var z = item.zIndex;
+      this._element[id] = childrenSprites[childId];
+      this._element[id].parentGroup = this._group;
+      this._element[id].zIndex = z;
+      this._character._spriter._spriteRequests = [];
+      this.refreshSpriterSprite();
     }
+  }
 };
 
-Spriter_Character.prototype.isChildForThis = function(l ,k) {
-    var spriteChildren = this._spriteChildren;
-    var childSprites = $gameVariables._data[spriterVarId]._childSprites; 
-	return childSprites[l]._character._name == spriteChildren[k].sprite;
+Spriter_Base.prototype.removeChildSprites = function(item) {
+  var id = item.timelineId
+  var childrenSprites = this._childrenSprites;
+  var requests = this._character._spriter._spriteRemoveRequests;
+  for (var i = 0; i < requests.length; i++) {
+    for (var j = 0; j < childrenSprites.length; j++) {
+      if (requests[i] == childrenSprites[j]._character._spriteParent) {
+        childrenSprites.splice(j,1);
+        this.refreshSpriterSprite();
+        this._character._spriter._spriteRemoveRequests = [];
+      }
+    }
+  }
 };
 
-Spriter_Character.prototype.hasNoParent = function(l) {
-    var spriteChildren = this._spriteChildren;
-    var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
-	return childSprites[l]._spriteParent === undefined;
-};
-
-Spriter_Character.prototype.hasSameParent = function(l ,k) {
-    var spriteChildren = this._spriteChildren;
-    var childSprites = $gameVariables._data[spriterVarId]._childSprites;  
-	return childSprites[l]._spriteParent == spriteChildren[k].parent;
+Spriter_Base.prototype.createChildSprites = function(item, w, h) {
+  var id = item.timelineId
+  var timelineName = this._pathTime[id].name.replace(/\_(\d){3}/, '');
+  var childrenSprites = this._childrenSprites;
+  var children = this._character._spriter._spriteChildren;
+  for (var i = 0; i < children.length; i++) {
+    if (timelineName == children[i]._spriteParent) {
+      var pivotX = item.anchor.x * w;
+      var pivotY = item.anchor.y * h;
+      childrenSprites.push(new Spriter_Child(children[i], pivotX, pivotY));
+      var childId = childrenSprites.length - 1;
+      var z = item.zIndex;
+      this._element[id] = childrenSprites[childId];
+      this._element[id].parentGroup = this._group;
+      this._element[id].zIndex = z;
+      this._character._spriter._spriteRequests = [];
+    }
+  }
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Checks if bone has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.updateBoneInheritance = function(j) {
+Spriter_Base.prototype.updateBoneInheritance = function(j) {
 	id = this.pathTimeId("bone", j);
 	if (this._pathMain[this._key].bone_ref[j].hasOwnProperty('parent')) {
 		parentMainId = this._pathMain[this._key].bone_ref[j].parent;
@@ -1637,7 +1599,7 @@ Spriter_Character.prototype.updateBoneInheritance = function(j) {
 //-------------------------------------------------------------------------------------------------------------
 // Checks if object has parent and checks inheritance
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
+Spriter_Base.prototype.objectInheritanceUpdate = function(i) {
 	id = this.pathTimeId("object", i);
     if (this._pathMain[this._key].object_ref[i].hasOwnProperty('parent')) {
     	parentMainId = this._pathMain[this._key].object_ref[i].parent;
@@ -1658,20 +1620,7 @@ Spriter_Character.prototype.objectInheritanceUpdate = function(i) {
 // Difference in value between two keys is divided with the difference in time between two keys.
 // The fraction is added to the previous frame value.
 //-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.tween = function(item) {
-
-    // Reset Global Value
-    var globals = this._globalAnimationInfo;
-    if (item.type === "bone") {
-	    if (!globals.bones.hasOwnProperty("bone_" + String(item.timelineId))) {
-	        globals.bones["bone_" + String(item.timelineId)] = {};
-	    }
-	}
-    else {
-	    if (!globals.objects.hasOwnProperty("object_" + String(item.timelineId))) {
-	        globals.objects["object_" + String(item.timelineId)] = {};
-	    }
-    }
+Spriter_Base.prototype.tween = function(item) {
 
     // Getting Keys & Times
     var pt;
@@ -1792,11 +1741,8 @@ Spriter_Character.prototype.tween = function(item) {
             item.anchor.y = nay;
         }
     }
+    // ---------------------------------------------------
 
-    // this._character._spriter.forceUpdate is True when when the player uses a plugin command to change Bitmaps
-    if (this._character._spriter.forceUpdate || !limitProcessCheck) {
-        this.updateBitmaps(item);
-    } 
 
     if (item.type ==="object") {
         // Getting Object Values for Key
@@ -1805,70 +1751,28 @@ Spriter_Character.prototype.tween = function(item) {
         var w = Number(this._animation.folder[folderId].file[fileId].width);
         var h = Number(this._animation.folder[folderId].file[fileId].height);
         if (this._character._spriter.forceUpdate) {
-            this.controlChildSprites(item.timelineId, w, h);
+            this.updateChildSprites(item, w, h);
         }
     }
 
+    // Set Texture for Sprite ----------------------------
+    // this._character._spriter.forceUpdate is True when when the player uses a plugin command to change Bitmaps
+    if (this._character._spriter.forceUpdate || !limitProcessCheck) {
+        this.updateTexture(item);
+    } 
     // ---------------------------------------------------
 
-    //Storing Values to Global Variable 
-    this.storeToGlobal(item);
-};
+    // Check Tags for Sprite Changes ---------------------
+    //this.setFromMeta(item);
+    // ---------------------------------------------------
 
-//-------------------------------------------------------------------------------------------------------------
-// Storing Element values to global
-//-------------------------------------------------------------------------------------------------------------
-Spriter_Character.prototype.storeToGlobal = function(item) {
-    var characterGlobal;
-    if (this._character.constructor === Game_Player) {
-        characterGlobal = $gameVariables._data[spriterVarId].player;
-    }
-    else if (this._character.constructor === Game_Event) {
-        var map = String(this._character._mapId);
-        var id = String(this._character._eventId);
-        characterGlobal = $gameVariables._data[spriterVarId].maps["map_" + map]["event_" + id];
-    }
-    else if (this._character.constructor === Game_Follower) {
-        var folId = String(this._character._memberIndex);
-        characterGlobal = $gameVariables._data[spriterVarId].followers["follower_" + folId];
-    }
-    else {
-    	var map = String($gameMap._mapId);
-        var name = String(this._character._name);
-        characterGlobal = $gameVariables._data[spriterVarId].maps["map_" + map]._children["child_" + name];
-    }
-    characterGlobal.dir = this._character._direction;
-    if (item.type === "bone") {
-        var bone = characterGlobal.bones[item.type + "_" + String(item.timelineId)];
-        bone.x = item.x;
-        bone.y = item.y;
-        bone.r = item.rotation;
-        bone.sx = item.scale.x;
-        bone.sy = item.scale.y;
-    }
-    else if (item.type === "object") {
-    	if (!characterGlobal.objects.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
-    		characterGlobal.objects[item.type + "_" + String(item.timelineId)] = {};
-    	}
-        var object = characterGlobal.objects[item.type + "_" + String(item.timelineId)];
-        object.x = item.x;
-        object.y = item.y;
-        object.r = item.rotation;
-        object.a = item.alpha;
-        object.ax = item.anchor.x;
-        object.ay = item.anchor.y;
-        object.sx = item.scale.x;
-        object.sy = item.scale.y;
-        object.z = item.zIndex;
-        object._fileName = item._fileName;
-    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
 // Updating Tags and Vars
 //-------------------------------------------------------------------------------------------------------------
 
-Spriter_Character.prototype.updateTagsAndVars = function() {
+Spriter_Base.prototype.updateTagsAndVars = function() {
     var map;
     var id;
     var event;
@@ -1933,11 +1837,313 @@ Spriter_Character.prototype.updateTagsAndVars = function() {
 };
 
 //-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Spriter_Character
+//*************************************************************************************************************
+// Creates Spriter character for overworld
+//-------------------------------------------------------------------------------------------------------------
+
+function Spriter_Character() {
+    this.initialize.apply(this, arguments);
+}
+
+
+Spriter_Character.prototype = Object.create(Spriter_Base.prototype);
+Spriter_Character.prototype.constructor = Spriter_Character;
+
+Spriter_Character.prototype.initialize = function(character) {
+    Spriter_Base.prototype.initialize.call(this, character);
+    this.start();
+};
+
+Spriter_Character.prototype.initMembers = function () {
+    Spriter_Base.prototype.initMembers.call(this);
+    this._balloonDuration = 0;
+    this._tilesetId = 0;
+    this._resetter = false;
+    this._recovery = "snap";
+    this._globalAnimationInfo = null;
+};
+
+Spriter_Character.prototype.setCharacter = function(character) {
+  Spriter_Base.prototype.setCharacter.call(this, character);
+
+    this._animationId = (character._direction - 2) / 2;
+    this._recovery = this._character._spriter._recovery;
+
+      //Getting Globals
+    if (this._character.constructor === Game_Player) { 
+        this._globalAnimationInfo = $infoSpriter.player;
+    }
+    else if (this._character.constructor === Game_Event) {
+        var map = String(this._character._mapId);
+        var id = String(this._character._eventId);
+        this._globalAnimationInfo = $infoSpriter.maps["map_" + map]["event_" + id];
+    }
+    else if (this._character.constructor === Game_Follower) {
+        var folId = String(this._character._memberIndex);
+        this._globalAnimationInfo = $infoSpriter.followers["follower_" + folId];
+    }
+
+    // Initializing animation components
+
+    if (!this._globalAnimationInfo.hasOwnProperty("bones")) {
+        this._globalAnimationInfo.bones = {};
+    }
+    if (!this._globalAnimationInfo.hasOwnProperty("objects")) {    
+        this._globalAnimationInfo.objects = {};
+    }
+    if (!this._globalAnimationInfo.hasOwnProperty("tag")) {    
+        this._globalAnimationInfo.tag = [];
+    }
+    if (!this._globalAnimationInfo.hasOwnProperty("var")) {    
+        this._globalAnimationInfo.var = {};
+    }
+    if (this._character._direction == this._globalAnimationInfo.dir) {
+        this._animationFrame = this._globalAnimationInfo.frame || 0;
+        this._key = this._globalAnimationInfo.key || 0;        
+    }
+    else {
+        this._animationFrame = 0;
+        this._key = 0;
+    }
+};
+
+//-------------------------------------------------------------------------------------------------------------
+// Draw First Sprite. 
+// In case the Sprite has been used before, this._globalAnimationIfo will replace animation values
+//-------------------------------------------------------------------------------------------------------------
+Spriter_Character.prototype.start = function() {
+    this.setInitialCharacter();
+};
+
+Spriter_Character.prototype.setInitialCharacter = function() {
+
+  var item;
+    this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
+    this._pathTime = this._animation.entity.animation[this._animationId].timeline;
+
+    // Set Bones
+    if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
+
+        //Setting Bone Inheritance
+        for(var j = 0; j < this._pathMain[this._key].bone_ref.length; j++) {
+            this.updateBoneInheritance(j);
+        
+        }
+
+        // Setting Bone Values
+        for (var n = 0; n < this._pathMain[this._key].bone_ref.length; n++) {
+          id = Number(this._pathMain[this._key].bone_ref[n].timeline);
+          item = this._element[id];
+          item.timelineId = id;
+          item.key = Number(this._pathMain[this._key].bone_ref[n].key); // Id of bone key for this._key
+            item.currentKey = this._pathTime[item.timelineId].key[item.key];
+            item.type = "bone";
+            this.setInitialElements(n, item);
+        }
+    }
+
+    if (this._pathMain[this._key].hasOwnProperty('object_ref')) {
+
+        //Going through all Objects for Current Key
+        for (var i = 0; i < this._pathMain[this._key].object_ref.length; i++){
+          id = Number(this._pathMain[this._key].object_ref[i].timeline);
+          item = this._element[id];
+          item.timelineId = id;
+          item.key = Number(this._pathMain[this._key].object_ref[i].key); // Id of bone key for this._key
+            item.currentKey = this._pathTime[item.timelineId].key[item.key];
+            item.type = "object";
+          this.setInitialElements(i, item);
+
+        }
+    }
+};
+
+Spriter_Character.prototype.setInitialElements = function(n, item) {
+
+    var globals = this._globalAnimationInfo;
+    var elementGlobal;
+    var w;
+    var h;
+    var element = item.type === "object" ? item.currentKey.object : item.currentKey.bone;
+    var folderId = Number(element.folder);
+    var fileId = Number(element.file);
+
+    if (item.type === "object") {
+
+      // Reset Inheritance
+      if (!globals.objects.hasOwnProperty("object_" + Number(item.timelineId))) {
+          globals.objects["object_" + Number(item.timelineId)] = {};
+      }
+      elementGlobal = globals.objects["object_" + Number(item.timelineId)];
+    
+      // Set Inheritance
+      if (this._pathMain[this._key].object_ref[n].hasOwnProperty('parent')) {
+        parentMainId = this._pathMain[this._key].object_ref[n].parent;
+        parentTimeId = this.pathTimeId("bone", parentMainId);
+          this._element[parentTimeId].addChild(item);
+      } 
+      else {
+            this._sprite.addChild(item);
+          
+      }
+
+      w = Number(this._animation.folder[folderId].file[fileId].width);
+      h = Number(this._animation.folder[folderId].file[fileId].height);
+
+  }
+  else {
+    if (!globals.bones.hasOwnProperty("bone_" + Number(item.timelineId))) {
+        globals.bones["bone_" + Number(item.timelineId)] = {};
+    }
+    elementGlobal = globals.bones["bone_" + Number(item.timelineId)];
+  }
+
+  var ex = Number(element.x) || 0;
+  var ey = Number(element.y) || 0;
+  var er = Number(element.angle) || 0;
+  var esx = element.scale_x || 1;
+  esx = Number(esx);
+  var esy = element.scale_y || 1;
+  esy = Number(esy);
+  var x = elementGlobal.x || ex;
+  var y = elementGlobal.y || -ey;
+  item.x = x;
+  item.y = y;
+  item.rotation = elementGlobal.r || -er * Math.PI / 180;
+  item.scale.x = elementGlobal.sx || esx;
+  item.scale.y = elementGlobal.sy || esy;
+
+  if (item.type === "object") {
+
+    var eax = Number(element.pivot_x) || 0;
+    var eay = 1 - Number(element.pivot_y) || 0;
+    var ea = element.a || 1;
+    ea = Number(ea);
+    var z = Number(this._pathMain[this._key].object_ref[n].z_index);
+
+    item.alpha = elementGlobal.a || ea;
+    item.anchor.x = elementGlobal.ex || eax;
+    item.anchor.y = elementGlobal.ey || eay;    
+    item.zIndex = elementGlobal.z || z;
+    item.tags = elementGlobal.tags || [];
+    item.vars = elementGlobal.vars || {};
+
+    this.updateTexture(item);
+
+    // Set Inherited Sprite
+    
+    this.createChildSprites(item, w, h);
+  }
+};
+
+Spriter_Character.prototype.update = function() {
+    this.updateDirection();
+    Spriter_Base.prototype.update.call(this);
+    this.updatePosition();
+    this.updateOther();
+};
+
+Spriter_Character.prototype.updateFrame = function () {
+  Spriter_Base.prototype.updateFrame.call(this);
+    this._globalAnimationInfo.key = this._key; 
+    this._globalAnimationInfo.frame = this._animationFrame;
+};
+
+Spriter_Character.prototype.setOnKey = function (item) {
+  Spriter_Base.prototype.setOnKey.call(this, item);
+
+    //Storing Values to Global Variable 
+    this.storeToGlobal(item);
+}
+
+Spriter_Character.prototype.tween = function (item) {
+  Spriter_Base.prototype.tween.call(this, item);
+  
+    //Storing Values to Global Variable 
+    this.storeToGlobal(item);
+}
+
+Spriter_Character.prototype.updateObjectTexture = function(item) {
+    var i = Spriter_Base.prototype.updateObjectTexture.call(this, item);
+
+    // In case a texture is loaded from an equipment type and equipent type is empty, do not load texture.
+    if (i) {
+      // Set Bitmap
+      if (this.bitmapIsPacked(i.path)) {
+          this.unpackTexture(item, i.skin, i.fileName);
+      }
+      else {
+          item.name = i.path;
+          item.texture = $spriterTextures["/img/characters/" + i.path];
+      }
+    }
+};
+
+
+//-------------------------------------------------------------------------------------------------------------
+// Storing Element values to global
+//-------------------------------------------------------------------------------------------------------------
+Spriter_Character.prototype.storeToGlobal = function(item) {
+    var characterGlobal;
+    if (this._character.constructor === Game_Player) {
+        characterGlobal = $infoSpriter.player;
+    }
+    else if (this._character.constructor === Game_Event) {
+        var map = String(this._character._mapId);
+        var id = String(this._character._eventId);
+        characterGlobal = $infoSpriter.maps["map_" + map]["event_" + id];
+    }
+    else if (this._character.constructor === Game_Follower) {
+        var folId = String(this._character._memberIndex);
+        characterGlobal = $infoSpriter.followers["follower_" + folId];
+    }
+    else {
+        var map = String($gameMap._mapId);
+        var name = String(this._character._name);
+        characterGlobal = $infoSpriter.maps["map_" + map]._children["child_" + name];
+    }
+    characterGlobal.dir = this._character._direction;
+    if (item.type === "bone") {
+        if (!characterGlobal.bones.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
+          characterGlobal.bones[item.type + "_" + String(item.timelineId)] = {};
+        }
+        var bone = characterGlobal.bones[item.type + "_" + String(item.timelineId)];
+        bone.x = item.x;
+        bone.y = item.y;
+        bone.r = item.rotation;
+        bone.sx = item.scale.x;
+        bone.sy = item.scale.y;
+        bone.tags = item.tags;
+        bone.vars = item.vars;
+    }
+    else if (item.type === "object") {
+      if (!characterGlobal.objects.hasOwnProperty(item.type + "_" + String(item.timelineId))) {
+        characterGlobal.objects[item.type + "_" + String(item.timelineId)] = {};
+      }
+        var object = characterGlobal.objects[item.type + "_" + String(item.timelineId)];
+        object.x = item.x;
+        object.y = item.y;
+        object.r = item.rotation;
+        object.a = item.alpha;
+        object.ax = item.anchor.x;
+        object.ay = item.anchor.y;
+        object.sx = item.scale.x;
+        object.sy = item.scale.y;
+        object.z = item.zIndex;
+        object._fileName = item._fileName;
+        object.tags = item.tags;
+        object.vars = item.vars;
+    }
+};
+
+//-------------------------------------------------------------------------------------------------------------
 // Functions shared with Sprite_Characters
 //-------------------------------------------------------------------------------------------------------------
 
 Spriter_Character.prototype.updateVisibility = function() {
-    Sprite_Base.prototype.updateVisibility.call(this);
+    Spriter_Base.prototype.updateVisibility.call(this);
     if (this._spriteType == 'character' && this._character.isTransparent()) {
         this.visible = false;
     }
@@ -1963,10 +2169,10 @@ Spriter_Character.prototype.updateAnimation = function() {
 
 Spriter_Character.prototype.updateOther = function() {
     if (this._spriteType == 'character') {
-	    this.opacity = this._character.opacity();
-	    this.blendMode = this._character.blendMode();
-	    this._bushDepth = this._character.bushDepth();
-	}
+      this.opacity = this._character.opacity();
+      this.blendMode = this._character.blendMode();
+      this._bushDepth = this._character.bushDepth();
+  }
 };
 
 Spriter_Character.prototype.setupAnimation = function() {
@@ -2014,93 +2220,40 @@ Spriter_Character.prototype.isBalloonPlaying = function() {
     return !!this._balloonSprite;
 };
 
-
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
-// Preloading Bitmaps
+// Children Attached on Spriter sprites.
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
-var spriter_alias_scene_map_initialize = Scene_Map.prototype.initialize;
-Scene_Map.prototype.initialize = function() {
-    spriter_alias_scene_map_initialize.call(this);
-    this._animationsLoaded = false;
-    this._spriterBitmaps = [];
+function Spriter_Child() {
+    this.initialize.apply(this, arguments);
+}
+
+Spriter_Child.prototype = Object.create(Spriter_Base.prototype);
+Spriter_Child.prototype.constructor = Spriter_Child;
+
+Spriter_Child.prototype.initialize = function(character, pivotX, pivotY) {
+    Spriter_Base.prototype.initialize.call(this, character);
+    this._sprite.x = -pivotX;
+    this._sprite.y = -pivotY;
 };
 
-var spriter_alias_scene_map_create = Scene_Map.prototype.create;
-Scene_Map.prototype.create = function() {
-    spriter_alias_scene_map_create.call(this);
-    this.getBitmaps("/img/characters/Spriter/");
-    this.loadBitmaps();
+Spriter_Child.prototype.update = function() {
+    Spriter_Base.prototype.update.call(this);
 };
 
-Scene_Map.prototype.isReady = function() {
-    if (!this._mapLoaded && this._animationsLoaded && DataManager.isMapLoaded()) {
-        this.onMapLoaded();
-        this._mapLoaded = true;
+Spriter_Child.prototype.updateObjectTexture = function(item) {
+    var i = Spriter_Base.prototype.updateObjectTexture.call(this, item);
+
+    // Set Bitmap
+    if (this.bitmapIsPacked(i.path)) {
+        this.unpackTexture(item, i.skin, i.fileName);
     }
-    return this._mapLoaded && Scene_Base.prototype.isReady.call(this);
-};
-
-Scene_Map.prototype.getBitmaps = function(dir) {
-    var mainFolder = this.getDirContents(dir);
-    for (var i = 0; i < mainFolder.length; i++) {
-        var path = dir + mainFolder[i];
-        if (mainFolder[i].slice(-4) === ".png") {
-            path = path.replace(".png","");
-            path = path.replace("/img/characters/","");
-            this._spriterBitmaps.push(path);
-        }
-        else if (this.isDirectory(path)) {
-            path = path + "/";
-            this.getBitmaps(path);
-        }
+    else {
+        item.name = i.path;
+        item.texture = $spriterTextures["/img/characters/" + i.path];
     }
-};
-
-Scene_Map.prototype.getDirContents = function(dir) {
-    var files = [];
-    var fs = require('fs');
-    var path = require('path');
-    var base = path.dirname(process.mainModule.filename);
-    fs.readdirSync(base+dir).forEach(function(file){
-        files.push(file);
-    });
-    return files;
-};
-
-Scene_Map.prototype.isDirectory = function(path) {
-    var fs = require('fs');
-    var basePath = require('path');
-    var base = basePath.dirname(process.mainModule.filename);
-    try{
-        if (fs.lstatSync(base + path).isDirectory()) {
-            return true;  
-        }
-        else {
-            return false;
-        }
-    }
-    catch(e){
-        // Handle error
-        if(e.code == 'ENOENT'){
-            return false;
-        }
-        else {
-            return false;
-
-        }
-    }
-};
-
-Scene_Map.prototype.loadBitmaps = function(){
-    this._mapSprite = new Sprite();
-    for (var i = 0; i < this._spriterBitmaps.length; i++) {
-        this._mapSprite.bitmap = ImageManager.loadCharacter(this._spriterBitmaps[i]);
-    }
-    
-    this._animationsLoaded = true;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -2117,24 +2270,27 @@ DataManager._databaseFiles.push(spriterObjects);
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
-// Setting Global For Spriter Animations 
+// Setting Global For Spriter Animations / TexturePacker Data / Textures
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
 var $spriterAnimations = {};
 var $texturePacker = {};
-
+var $spriterTextures = {}
 var spriter_alias_Scene_Boot_create = Scene_Boot.prototype.create;
 Scene_Boot.prototype.create = function() {
     spriter_alias_Scene_Boot_create.call(this);
-    this.loadSpriterAnimations();
-    this.loadTexturePackerJSONs("/img/characters/Spriter/");
+    this.loadSpriterAnimations(animFolder);
+    this.loadTexturePackerJSONs("/" + spriteFolder + "Spriter/");
+    this.loadTextures("/" + spriteFolder + "Spriter/");
 };
 
-Scene_Boot.prototype.loadSpriterAnimations = function(){
-    var files = getFiles ("/data/animations/");
+Scene_Boot.prototype.loadSpriterAnimations = function(path){
+    var files = getFiles ("/" + path);
     for (var i = 0; i < files.length; i++){
-        fetchSCMLFile('data/animations/' + files[i], setSpriterData, files[i]);
+        if (!this.isDirectory("/" + path + files[i])) {
+          fetchSCMLFile(path + files[i], setSpriterData, files[i]);
+        }
     }
 };
 
@@ -2148,6 +2304,32 @@ Scene_Boot.prototype.loadTexturePackerJSONs = function(dir) {
         else if (this.isDirectory(path)) {
             path = path + "/";
             this.loadTexturePackerJSONs(path);
+        }
+    }
+};
+
+Scene_Boot.prototype.getDirContents = function(dir) {
+    var files = [];
+    var fs = require('fs');
+    var path = require('path');
+    var base = path.dirname(process.mainModule.filename);
+    fs.readdirSync(base+dir).forEach(function(file){
+        files.push(file);
+    });
+    return files;
+};
+
+Scene_Boot.prototype.loadTextures = function(dir) {
+    var outPath = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
+    var mainFolder = this.getDirContents(dir);
+    for (var i = 0; i < mainFolder.length; i++) {
+        var path = dir + mainFolder[i];
+        if (mainFolder[i].slice(-4) === ".png") {
+            $spriterTextures[path] = PIXI.Texture.fromImage(outPath+path);
+        }
+        else if (this.isDirectory(path)) {
+            path = path + "/";
+            this.loadTextures(path);
         }
     }
 };
@@ -2197,7 +2379,6 @@ function fetchSCMLFile(path, callback, name) {
     var httpRequest = new XMLHttpRequest();
     httpRequest.onreadystatechange = function() {
         if (httpRequest.readyState === 4) {
-          console.log(httpRequest);
             var data = XML2jsobj(httpRequest.responseXML.documentElement);
             if (callback) callback(data, name);
         }
@@ -2397,8 +2578,54 @@ function obj2Arr(data) {
                 delete data.entity.animation[i].timeline[k].key;
                 data.entity.animation[i].timeline[k].key = [temp];
             }
+            if (data.entity.animation[i].timeline[k].hasOwnProperty('meta')) {
+              if (data.entity.animation[i].timeline[k].meta.hasOwnProperty('tagline')) {
+                if (data.entity.animation[i].timeline[k].meta.tagline.key.constructor == Object) {
+                  temp = data.entity.animation[i].timeline[k].meta.tagline.key;
+                  delete data.entity.animation[i].timeline[k].meta.tagline.key;
+                  data.entity.animation[i].timeline[k].meta.tagline.key = [temp];
+                }
+                
+                for (var l = 0; l < data.entity.animation[i].timeline[k].meta.tagline.key.length; l++) {
+                  if (data.entity.animation[i].timeline[k].meta.tagline.key[l].tag.constructor == Object) {
+                    temp = data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
+                    delete data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
+                    data.entity.animation[i].timeline[k].meta.tagline.key[l].tag = [temp];
+                  }
+                }
+              }
+              else if (data.entity.animation[i].timeline[k].meta.hasOwnProperty('varline')) {
+              	if (data.entity.animation[i].timeline[k].meta.varline.constructor == Object) {
+              		temp = data.entity.animation[i].timeline[k].meta.varline;
+              		delete data.entity.animation[i].timeline[k].meta.varline;
+              		data.entity.animation[i].timeline[k].meta.varline = [temp];
+              	}
+
+
+              	for (var m = 0; m < data.entity.animation[i].timeline[k].meta.varline.length; m++) {
+              		if (data.entity.animation[i].timeline[k].meta.varline[m].key.constructor == Object) {
+              			temp = data.entity.animation[i].timeline[k].meta.varline[m].key;
+              			delete data.entity.animation[i].timeline[k].meta.varline[m].key
+              			data.entity.animation[i].timeline[k].meta.varline[m].key = [temp];
+              		}
+              	}
+              }
+            }
         }
     }
+
+    if (data.hasOwnProperty('obj_info')) {
+    	for (var i = 0; i < data.entity.obj_info.length; i++) {
+	    	if (data.entity.obj_info[i].hasOwnProperty('var_defs')) {
+	    		if (data.entity.obj_info[i].var_defs.i.constructor == Object) {
+	    			temp = data.entity.obj_info[i].var_defs.i;
+	    			delete data.entity.obj_info[i].var_defs.i;
+	    			data.entity.obj_info[i].var_defs.i = [temp];
+	    		}
+	    	}
+	    }
+    }
+    
 
     // atlas
     if (data.hasOwnProperty("atlas")) {
@@ -2500,16 +2727,20 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         event = $gameMap.event(args[0])._spriter;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        eventGlobalInfo = $infoSpriter.maps[mapId][eventId];
         event._skeleton = args[1];
         eventGlobalInfo._skeleton = event._skeleton;
+        event._skin = args[2];
+        event._skinParts = [];
+        eventGlobalInfo._skin = event._skin;
+        eventGlobalInfo._skinParts = [];
     }
     else if (command === "eventSkin") {
         event = $gameMap.event(args[0])._spriter;
         event.forceUpdate = true;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        eventGlobalInfo = $infoSpriter.maps[mapId][eventId];
         event._skin = args[1];
         event._skinParts = [];
         eventGlobalInfo._skin = event._skin;
@@ -2519,7 +2750,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         event = $gameMap.event(args[0])._spriter;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        eventGlobalInfo = $infoSpriter.maps[mapId][eventId];
         event._speed = Number(args[1]);
         eventGlobalInfo._speed = $gameMap.event(args[0])._speed; 
     }
@@ -2527,7 +2758,7 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         event = $gameMap.event(args[0])._spriter;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        eventGlobalInfo = $infoSpriter.maps[mapId][eventId];
         event._stop = eval(args[1]);
         eventGlobalInfo._stop = $gameMap.event(args[0])._spriter._stop;
     }
@@ -2535,105 +2766,21 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
         event = $gameMap.event(args[0])._spriter;
         mapId = "map_" + String($gameMap.event(args[0])._mapId);
         eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
+        eventGlobalInfo = $infoSpriter.maps[mapId][eventId];
         event._recovery = args[1];
         eventGlobalInfo._recovery = $gameMap.event(args[0])._recovery;
     }
     else if (command === "eventSkinPart") {
-        event = $gameMap.event(args[0])._spriter;
-        event.forceUpdate = true;
-        mapId = "map_" + String($gameMap.event(args[0])._mapId);
-        eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        a = {};
-        a.skinName = args[1];
-        a.skinSet = args[2];
-        a.fullSprite = eval(args[3]);
-        if (event._skinParts.length > 0) {
-            for (i = 0; i < event._skinParts.length; i++) {
-                if (event._skinParts[i].skinName == a.skinName) {
-                    event._skinParts[i] = a;
-                    break;
-                }
-                else if (i == event._skinParts.length - 1) {
-                    event._skinParts.push(a);
-                }
-            }
-        }
-        else {
-            event._skinParts.push(a);
-        }
-        eventGlobalInfo._skinParts = event._skinParts;
+        $gameMap.event(args[0]).changeSkinPart(args[1], args[2], args[3]);
     }
     else if (command === "eventRemoveSkinPart") {
-        event = $gameMap.event(args[0])._spriter;
-        event.forceUpdate = true;
-        mapId = "map_" + String($gameMap.event(args[0])._mapId);
-        eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        a = {};
-        a.skinName = args[1];
-        if (event._skinParts.length > 0) {
-            for (i = 0; i < event._skinParts.length; i++) {
-                if (event._skinParts[i].skinName == a.skinName) {
-                    event._skinParts.splice(i,1);
-                    break;
-                }
-            }
-        }
-        eventGlobalInfo._skinParts = event._skinParts;
+      $gameMap.event(args[0]).removeSkinPart(args[1]);
     }
     else if (command === "eventChildSprite") {
-        event = $gameMap.event(args[0])._spriter;
-        event.forceUpdate = true;
-        mapId = "map_" + String($gameMap.event(args[0])._mapId);
-        eventId = "event_" + String($gameMap.event(args[0])._eventId);
-        eventGlobalInfo = $gameVariables._data[spriterVarId].maps[mapId][eventId];
-        a = {};
-        a.skinName = args[1];
-        a.sprite = args[2];
-        a.remove = false;
-        a.parent = 'event_' + args[0];
-        if (event._spriteChildren.length > 0) {
-            for (i = 0; i < event._spriteChildren.length; i++) {
-                if (event._spriteChildren[i].skinName == a.skinName) {
-                    event._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == event._spriteChildren.length - 1){
-                    event._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-            event._spriteChildren.push(a);
-        }
-        
-        eventGlobalInfo._spriteChildren = event._spriteChildren;
-        $gameVariables._data[spriterVarId]._spriteRequests.push(a);
+      $gameMap.event(args[0]).createChildSprite(args[1], args[2]);
     }
     else if (command === "eventRemoveChildSprite") {
-        event = $gameMap.event(args[0])._spriter;
-        event.forceUpdate = true;
-        a = {};
-        a.skinName = args[1];
-        a.sprite = args[2];
-        a.parent = 'event_' + args[0];
-        a.remove = true;
-        if (event._spriteChildren.length > 0) {
-            for (i = 0; i < event._spriteChildren.length; i++) {
-                if (event._spriteChildren[i].skinName == a.skinName) {
-                    event._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == event._spriteChildren.length - 1){
-                    event._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-            event._spriteChildren.push(a);
-        }
+      $gameMap.event(args[0]).removeChildSprite(args[1]);
     }
 
     //-------------------------------------------------------------------------------------------------------------     
@@ -2641,115 +2788,44 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     //-------------------------------------------------------------------------------------------------------------     
 
     else if (command === "playerSkeleton") {
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        playerGlobalInfo = $infoSpriter.player;
         $gamePlayer._spriter._skeleton = args[0];
         playerGlobalInfo._skeleton = args[0];
+        $gamePlayer._spriter._skin = args[1];
+        playerGlobalInfo._skin = args[1];
     }
     else if (command === "playerSkin") {
         $gamePlayer._spriter.forceUpdate = true;
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        playerGlobalInfo = $infoSpriter.player;
         $gamePlayer._spriter._skin = args[0];
         playerGlobalInfo._skin = args[0];
     }
     else if (command === "playerSpeed") {
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        playerGlobalInfo = $infoSpriter.player;
         $gamePlayer._spriter._speed = args[0];
         playerGlobalInfo._speed = Number(args[0]);
     }
     else if (command === "playerStop") {
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        playerGlobalInfo = $infoSpriter.player;
         $gamePlayer._spriter._stop = eval(args[0]);
         playerGlobalInfo._stop = eval(args[0]);    
     }
     else if (command === "playerRecovery") {
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
+        playerGlobalInfo = $infoSpriter.player;
         $gamePlayer._spriter._recovery = args[0];
         playerGlobalInfo._recovery = args[0];
     }
     else if (command === "playerSkinPart") {
-        $gamePlayer._spriter.forceUpdate = true;
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        a = {};
-        a.skinName = args[0];
-        a.skinSet = args[1];
-        a.fullSprite = eval(args[2]);
-        if ($gamePlayer._spriter._skinParts.length > 0) {
-            for (i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
-                if ($gamePlayer._spriter._skinParts[i].skinName == a.skinName) {
-                    $gamePlayer._spriter._skinParts[i] = a;
-                    break;
-                }
-                else if (i == $gamePlayer._spriter._skinParts.length - 1) {
-                    $gamePlayer._spriter._skinParts.push(a);
-                }
-            }
-        }
-        else {
-            $gamePlayer._spriter._skinParts.push(a);
-        }
-        playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
+        $gamePlayer.changeSkinPart(args[0], args[1], args[2]);
     }
     else if (command === "playerRemoveSkinPart") {
-        $gamePlayer._spriter.forceUpdate = true;
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        a = {};
-        a.skinName = args[0];
-        if ($gamePlayer._spriter._skinParts.length > 0) {
-            for (i = 0; i < $gamePlayer._spriter._skinParts.length; i++) {
-                if ($gamePlayer._spriter._skinParts[i].skinName == a.skinName) {
-                    $gamePlayer._spriter._skinParts.splice(i,1);
-                    break;
-                }
-            }
-        }
-        playerGlobalInfo._skinParts = $gamePlayer._spriter._skinParts;
+        $gamePlayer.removeSkinPart(args[0]);
     }
     else if (command === "playerChildSprite") {
-        $gamePlayer._spriter.forceUpdate = true;
-        playerGlobalInfo = $gameVariables._data[spriterVarId].player;
-        a = {};
-        a.skinName = args[0];
-        a.sprite = args[1];
-        a.parent = "player";
-        a.remove = false;
-        if ($gamePlayer._spriter._spriteChildren.length > 0) {
-            for (i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
-                if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
-                    $gamePlayer._spriter._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == event._spriteChildren.length - 1){
-                    $gamePlayer._spriter._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-            $gamePlayer._spriter._spriteChildren.push(a);
-        }
-        playerGlobalInfo._spriteChildren = $gamePlayer._spriter._spriteChildren;
-        $gameVariables._data[spriterVarId]._spriteRequests.push(a);
+        $gamePlayer.createChildSprite(args[0], args[1]);
     }
     else if (command === "playerRemoveChildSprite") {
-        $gamePlayer._spriter.forceUpdate = true;
-        a = {};
-        a.skinName = args[0];
-        a.sprite = args[1];
-        a.parent = "player";
-        a.remove = true;
-        if ($gamePlayer._spriter._spriteChildren.length > 0) {
-            for (i = 0; i < $gamePlayer._spriter._spriteChildren.length; i++) {
-                if ($gamePlayer._spriter._spriteChildren[i].skinName == a.skinName) {
-                    $gamePlayer._spriter._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == $gamePlayer._spriter._spriteChildren.length - 1){
-                    $gamePlayer._spriter._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-            $gamePlayer._spriter._spriteChildren.push(a);
-        }
+        $gamePlayer.removeChildSprite(args[0]);
     }   
 
     //-------------------------------------------------------------------------------------------------------------     
@@ -2759,14 +2835,18 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     if (command === "followerSkeleton") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         follower.forceUpdate = true;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
+        followerGlobalInfo = $infoSpriter.followers['follower_'+ args[0]];
         follower._skeleton = args[1];
         followerGlobalInfo._skeleton = follower._skeleton;
+        follower._skin = args[2];
+        follower._skinParts = [];
+        followerGlobalInfo._skin = follower._skin;
+        followerGlobalInfo._skinParts = [];
     }
     else if (command === "followerSkin") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
         follower.forceUpdate = true;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
+        followerGlobalInfo = $infoSpriter.followers['follower_'+ args[0]];
         follower._skin = args[1];
         follower._skinParts = [];
         followerGlobalInfo._skin = follower._skin;
@@ -2774,111 +2854,33 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
     }
     else if (command === "followerSpeed") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0] - 1];
+        followerGlobalInfo = $infoSpriter.followers['follower_'+ args[0] - 1];
         follower._speed = Number(args[1]);
         followerGlobalInfo._speed = follower._speed; 
     }
     else if (command === "followerStop") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
+        followerGlobalInfo = $infoSpriter.followers['follower_'+ args[0]];
         follower._stop = eval(args[1]);
         followerGlobalInfo._stop = follower._stop;
     }
     else if (command === "followerRecovery") {
         follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
+        followerGlobalInfo = $infoSpriter.followers['follower_'+ args[0]];
         follower._recovery = args[1];
         followerGlobalInfo._recovery = follower._recovery;
     }
     else if (command === "followerSkinPart") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        follower.forceUpdate = true;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
-        a = {};
-        a.skinName = args[1];
-        a.skinSet = args[2];
-        a.fullSprite = eval(args[3]);
-        if (follower._skinParts.length > 0) {
-            for (i = 0; i < follower._skinParts.length; i++) {
-                if (follower._skinParts[i].skinName == a.skinName) {
-                    follower._skinParts[i] = a;
-                    break;
-                }
-                else if (i == follower._skinParts.length - 1) {
-                    follower._skinParts.push(a);
-                }
-            }
-        }
-        else {
-            follower._skinParts.push(a);
-        }
-        followerGlobalInfo._skinParts = follower._skinParts;
+        $gamePlayer.followers()._data[Number(args[0]) - 1].changeSkinPart(args[1], args[2], args[3]);
     }
     else if (command === "followerRemoveSkinPart") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        follower.forceUpdate = true;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
-        a = {};
-        a.skinName = args[1];
-        if (follower._skinParts.length > 0) {
-            for (i = 0; i < follower._skinParts.length; i++) {
-                if (follower._skinParts[i].skinName == a.skinName) {
-                    follower._skinParts.splice(i,1);
-                    break;
-                }
-            }
-        }
-        followerGlobalInfo._skinParts = follower._skinParts;
+        follower = $gamePlayer.followers()._data[Number(args[0]) - 1].removeSkinPart(args[1]);
     }
     else if (command === "followerChildSprite") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        follower.forceUpdate = true;
-        followerGlobalInfo = $gameVariables._data[spriterVarId].followers['follower_'+ args[0]];
-        a = {};
-        a.skinName = args[1];
-        a.sprite = args[2];
-        a.remove = false;
-        a.parent = 'follower';
-        if (follower._spriteChildren.length > 0) {
-            for (i = 0; i < follower._spriteChildren.length; i++) {
-                if (follower._spriteChildren[i].skinName == a.skinName) {
-                    follower._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == follower._spriteChildren.length - 1){
-                    follower._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-           follower._spriteChildren.push(a);
-        }
-        
-        followerGlobalInfo._spriteChildren =  follower._spriteChildren;
-        $gameVariables._data[spriterVarId]._spriteRequests.push(a);
+        $gamePlayer.followers()._data[Number(args[0]) - 1].createChildSprite(args[1], args[2]);
     }
     else if (command === "followerRemoveChildSprite") {
-        follower = $gamePlayer.followers()._data[Number(args[0]) - 1]._spriter;
-        follower.forceUpdate = true;
-        a = {};
-        a.skinName = args[1];
-        a.sprite = args[2];
-        a.parent = 'follower';
-        a.remove = true;
-        if (follower._spriteChildren.length > 0) {
-            for (i = 0; i < follower._spriteChildren.length; i++) {
-                if (follower._spriteChildren[i].skinName == a.skinName) {
-                    follower._spriteChildren[i] = a;
-                    break;
-                }
-                else if (i == follower._spriteChildren.length - 1){
-                    follower._spriteChildren.push(a);
-                }
-            }
-        }
-        else {
-            follower._spriteChildren.push(a);
-        }
+        $gamePlayer.followers()._data[Number(args[0]) - 1].removeChildSprite(args[1]);
     }
 };
 
@@ -2914,78 +2916,21 @@ Game_CharacterBase.prototype.checkTags = function() {
 				params.pan = tagArray[2];
 				params.pitch = tagArray[3];
 				params.volume = Number(tagArray[4]);
-                if (tagArray[5] === "true") {
-                    maxVolumeArea = Number(tagArray[6]);
-                    maxArea = Number(tagArray[7]);
-                    dx = Math.abs(this.x - $gamePlayer.x);
-                    dy = Math.abs(this.y - $gamePlayer.y);
-                    d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
-                    if (d > maxVolumeArea && (d - maxVolumeArea) <= maxArea) {
-                        params.volume -= params.volume * (d - maxVolumeArea) / maxArea;
-                    }
-                    else if ((d - maxVolumeArea) > maxArea) {
-                        params.volume = 0;
-                    }
-                }
-    			AudioManager.playSe(params);
+        if (tagArray[5] === "true") {
+            maxVolumeArea = Number(tagArray[6]);
+            maxArea = Number(tagArray[7]);
+            dx = Math.abs(this.x - $gamePlayer.x);
+            dy = Math.abs(this.y - $gamePlayer.y);
+            d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+            if (d > maxVolumeArea && (d - maxVolumeArea) <= maxArea) {
+                params.volume -= params.volume * (d - maxVolumeArea) / maxArea;
+            }
+            else if ((d - maxVolumeArea) > maxArea) {
+                params.volume = 0;
+            }
+        }
+    		AudioManager.playSe(params);
 			}
-            else if (this._spriter.tag[i].name.includes("ChildSprite,")) {
-                tagArray = this._spriter.tag[i].name.split(",");
-                params = {};
-                params.skinName = tagArray[1];
-                params.sprite = tagArray[2];
-                if (this.constructor == Game_Player) {
-                    command = "player" + tagArray[0];
-                    args = [];
-                    args[0] = tagArray[1];
-                    args[1] = tagArray[2];
-                }
-                else if (this.constructor == Game_Follower) {
-                    command = "follower" + tagArray[0];
-                    args = [];
-                    args[0] = this._memberIndex;
-                    args[1] = tagArray[1];
-                    args[2] = tagArray[2];
-                }
-                else if (this.constructor == Game_Event){
-                    command = "event" + tagArray[0];
-                    args = [];
-                    args[0] = this._eventId;
-                    args[1] = tagArray[1];
-                    args[2] = tagArray[2];
-                }
-                $gameMap._interpreter.pluginCommand(command, args);
-            }
-            else if (this._spriter.tag[i].name.includes("SkinPart,")) {
-                tagArray = this._spriter.tag[i].name.split(",");
-                params = {};
-                params.skinName = tagArray[1];
-                params.sprite = tagArray[2];
-                if (this.constructor == Game_Player) {
-                    command = "player" + tagArray[0];
-                    args = [];
-                    args[0] = tagArray[1];
-                    args[1] = tagArray[2];
-                    args[2] = tagArray[3];
-                }
-                else if (this.constructor == Game_Follower) {
-                    command = "follower" + tagArray[0];
-                    args = [];
-                    args[0] = this._memberIndex;
-                    args[1] = tagArray[1];
-                    args[2] = tagArray[2];
-                    args[3] = tagArray[3];
-                }
-                else if (this.constructor == Game_Event){
-                    command = "event" + tagArray[0];
-                    args = [];
-                    args[0] = this._eventId;
-                    args[1] = tagArray[1];
-                    args[2] = tagArray[2];
-                    args[3] = tagArray[3];
-                }
-                $gameMap._interpreter.pluginCommand(command, args);
-            }
 		}
 	}
 };
@@ -3017,6 +2962,7 @@ var pixi_display;
             this.containerRenderWebGL(renderer);
         },
         renderCanvas: function (renderer) {
+          console.log("in");
             if (this._activeParentLayer && this._activeParentLayer != renderer._activeLayer) {
                 return;
             }
@@ -3548,48 +3494,27 @@ Graphics.render = function(stage) {
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
-// Fix For SubFolders
+// Fix For SubFolders for RPGV 1.6
+// Unnecessary for new version of Spriter.js whoch works with textures instead of bitmaps.
+// 
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
-ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
-    if (filename) {
-        var folderPath = filename.split('/');
-        for (var i = 0; i < folderPath.length - 1; i++) {
-            folder += folderPath[i] + '/';
-        }
-        filename = folderPath[folderPath.length - 1];
-        var path = folder + encodeURIComponent(filename) + '.png';
-        var bitmap = this.loadNormalBitmap(path, hue || 0);
-        bitmap.smooth = smooth;
-        return bitmap;
-    } else {
-        return this.loadEmptyBitmap();
-    }
-};
-
-//-------------------------------------------------------------------------------------------------------------
-//*************************************************************************************************************
-// Rotate Bitmap
-//*************************************************************************************************************
-//-------------------------------------------------------------------------------------------------------------
-
-Bitmap.prototype.bltRotate = function(source, sx, sy, sw, sh, dx, dy, angle, dw, dh) {        
-    angle = angle || 0;        
-    dw = dw || sw;        
-    dh = dh || sh;        
-    if (sx >= 0 && sy >= 0 && sw > 0 && sh > 0 && dw > 0 && dh > 0 && sx + sw <= source.width && sy + sh <= source.height) {            
-        this._context.globalCompositeOperation = 'source-over';  
-        var offsetX = dx;            
-        var offsetY = dy;           
-        this._context.translate(offsetX, offsetY);            
-        this._context.rotate(angle * Math.PI/180);            
-        this._context.translate(-offsetX, -offsetY);            
-        this._context.drawImage(source._canvas, sx, sy, sw, sh, dx - dw, dy, dw, dh);            
-        this._context.setTransform(1, 0, 0, 1, 0, 0);            
-        this._setDirty();        
-    }    
-};
+// ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
+//     if (filename) {
+//         var folderPath = filename.split('/');
+//         for (var i = 0; i < folderPath.length - 1; i++) {
+//             folder += folderPath[i] + '/';
+//         }
+//         filename = folderPath[folderPath.length - 1];
+//         var path = folder + encodeURIComponent(filename) + '.png';
+//         var bitmap = this.loadNormalBitmap(path, hue || 0);
+//         bitmap.smooth = smooth;
+//         return bitmap;
+//     } else {
+//         return this.loadEmptyBitmap();
+//     }
+// };
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -3669,4 +3594,103 @@ UnitBezier.prototype.solveCurveX = function (x, epsilon) {
 UnitBezier.prototype.solve = function (x, epsilon) {
     return this.sampleCurveY( this.solveCurveX(x, epsilon) );
 }
+
+//-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Game_SpriterCharacte
+//*************************************************************************************************************
+//-------------------------------------------------------------------------------------------------------------
+
+function Game_SpriterCharacter() {
+    this.initialize.apply(this, arguments);
+}
+
+Object.defineProperties(Game_SpriterCharacter.prototype, {
+    x: { get: function() { return this._x; }, configurable: true },
+    y: { get: function() { return this._y; }, configurable: true }
+});
+
+Game_SpriterCharacter.prototype.initialize = function(content, spriteParent, id) {
+  this.initMembers(content, spriteParent, id)
+};
+
+Game_SpriterCharacter.prototype.initMembers = function(content, spriteParent, id) {
+    this._content = content
+    this.x = 0;
+    this.y = 0;
+    this._spriter = this._content._spriter;
+    this._direction = this._content._direction;
+    this._stepAnime = this._content._stepAnime;
+    this._id = id;
+    this._name = this._content._name;
+    this._spriteParent = spriteParent;
+    this._spriter._spriteRemoveRequests = [];
+};
+
+
+//-------------------------------------------------------------------------------------------------------------
+//*************************************************************************************************************
+// Variable for Spriter Data
+//*************************************************************************************************************
+//-------------------------------------------------------------------------------------------------------------
+
+var $infoSpriter = null;
+var $spriteRequestManager = null;
+
+var spriter_alias_Datamanager_makeSaveContents = DataManager.makeSaveContents;
+DataManager.makeSaveContents = function() {
+  contents = spriter_alias_Datamanager_makeSaveContents.call(this);
+  contents.spriter       = $infoSpriter;
+  return contents;
+};
+
+var spriter_alias_Datamanager_createGameObjects = DataManager.createGameObjects;
+DataManager.createGameObjects = function() {
+  spriter_alias_Datamanager_createGameObjects.call(this);
+  $infoSpriter          = new SpriterData();
+  $spriteRequestManager = new SpriteRequestManager();
+};
+
+var spriter_alias_Datamanager_extractSaveContents = DataManager.extractSaveContents;
+DataManager.extractSaveContents = function(contents) {
+  spriter_alias_Datamanager_extractSaveContents.call(this, contents);
+  $infoSpriter        = contents.spriter;
+  
+};
+
+function SpriterData() {
+  this.initialize.apply(this, arguments);
+}
+
+SpriterData.prototype.initialize = function() {
+  this.player = {};
+  this.player.tag = [];
+  this.player.var = {};
+  this.player._children = [];
+  this.followers = {};
+  this.followers._children = [];
+  this.maps = {};
+  this._followerRequests = [];
+
+  for (var i = 1; i < $dataActors.length; i++) {
+      this.followers["follower_" + $dataActors[i].id] = {};
+      this.followers["follower_" + $dataActors[i].id].tag = [];
+      this.followers["follower_" + $dataActors[i].id].var = {};
+  }
+
+  for (var i = 1; i < $dataMapInfos.length; i++) {
+    if ($dataMapInfos[i] !== null) {
+      this.maps["map_" + i] = {};
+    }
+  }
+};
+
+function SpriteRequestManager() {
+  this.initialize.apply(this, arguments);
+}
+
+SpriteRequestManager.prototype.initialize = function() {
+  this._childSprites = [];
+  this._spriteRequests = [];
+};
 
