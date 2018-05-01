@@ -1,13 +1,13 @@
 //=============================================================================
 // Spriter Pro Plugin
 // by KanaX
-// version 1.3
-// Last Update: 2018.03.18
+// version 1.3.5
+// Last Update: 2018.04.30
 //=============================================================================
 
 /*:
  * @plugindesc Allows user to utilize Spriter Pro save files and sprite parts for Skeletal Animations
-   <Spriter> v1.0
+   <Spriter> v1.3.5
  * @author KanaX
  *
  * 
@@ -208,7 +208,11 @@
  * [2] $gamePlayer.resetAnimation = true;
  * [3] $gamePlayer.followers()[1].resetAnimation = true;
  * [4] $gameMap._events[1].hasActiveTag("tagName");                                                            (Checks if character has an active tag for this frame)
- * [5] $gameMap._events[1]._spriter.var.variableName                                                           (Returns value for variableName for this Frame)
+ * [5] $gameMap._events[1]._spriter.var.variableName;                                                           (Returns value for variableName for this Frame)
+ * [6] $gamePlayer.changeSkinPart(parameters same as plugin command);
+ * [7] $gamePlayer.removeSkinPart(parameters same as plugin command);
+ * [8] $gamePlayer.createChildSprite(parameters same as plugin command);
+ * [9] $gamePlayer.removeChildSprite(parameters same as plugin command);
  *
  * Tag Commands:                                                                                               (Place tags with the following labels for special effects)
  * [1] se,seName,pan,pitch,volume,fade(, areaOfMaxVolume, areaOfTotalFade)                                     (Plays SE sound. If fade is true, the sound fades away the further the player is from the source)
@@ -235,6 +239,10 @@
  *             Added Instant Tweening for Animations
  *             Added TexturePacker Support.
  *             Added Paramaters to give Spriter Plugin better Performance.
+ * 04/30/2018: Fixed saving bug.
+ *             Formatted the core classes for future add-ons and updates.
+ *             Added ability to tag sprites to be replaced with equiped items.
+ *             
  * ----------------------------------------------------------------------------
  *
  * ----------------------------------------------------------------------------
@@ -335,49 +343,49 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
 };
 
 Game_CharacterBase.prototype.changeSkinPart = function(originName, newSkin, isFullSprite) {
-        this._spriter.forceUpdate = true;
-        a = {};
-        a.originName = originName;
-        a.newSkin = newSkin;
-        a.isFullSprite = eval(isFullSprite);
-        if (this._spriter._skinParts.length > 0) {
-            for (i = 0; i < this._spriter._skinParts.length; i++) {
-                if (this._spriter._skinParts[i].originName == a.originName) {
-                    this._spriter._skinParts[i] = a;
-                    break;
-                }
-                else if (i == this._spriter._skinParts.length - 1) {
-                    this._spriter._skinParts.push(a);
-                }
-            }
-        }
-        else {
-            this._spriter._skinParts.push(a);
-        }
+  this._spriter.forceUpdate = true;
+  a = {};
+  a.originName = originName;
+  a.newSkin = newSkin;
+  a.isFullSprite = eval(isFullSprite);
+  if (this._spriter._skinParts.length > 0) {
+    for (i = 0; i < this._spriter._skinParts.length; i++) {
+      if (this._spriter._skinParts[i].originName == a.originName) {
+        this._spriter._skinParts[i] = a;
+        break;
+      }
+      else if (i == this._spriter._skinParts.length - 1) {
+        this._spriter._skinParts.push(a);
+      }
+    }
+  }
+  else {
+    this._spriter._skinParts.push(a);
+  }
 
-        this.removeChildSprite(originName);
+  this.removeChildSprite(originName);
 
-        var globalInfo = this.getCharacterGlobal();
-        globalInfo._skinParts = this._spriter._skinParts;
+  var globalInfo = this.getCharacterGlobal();
+  globalInfo._skinParts = this._spriter._skinParts;
 };
 
 Game_CharacterBase.prototype.removeSkinPart = function(originName) {
-        this.forceUpdate = true;
-        a = {};
-        a.originName = originName;
-        for (i = 0; i < this._spriter._skinParts.length; i++) {
-          if (this._spriter._skinParts[i].originName == a.originName) {
-              this._spriter._skinParts.splice(i,1);
-              break;
-          }
-        }
+    this._sprite.forceUpdate = true;
+    a = {};
+    a.originName = originName;
+    for (i = 0; i < this._spriter._skinParts.length; i++) {
+      if (this._spriter._skinParts[i].originName == a.originName) {
+          this._spriter._skinParts.splice(i,1);
+          break;
+      }
+    }
 
-        var globalInfo = this.getCharacterGlobal();
-        globalInfo._skinParts = this._spriter._skinParts;
+    var globalInfo = this.getCharacterGlobal();
+    globalInfo._skinParts = this._spriter._skinParts;
 }
 
 Game_CharacterBase.prototype.createChildSprite = function(parentSprite, spriteObjectName) {
-    this.forceUpdate = true;
+    this._sprite.forceUpdate = true;
 
     var children = this._spriter._spriteChildren;
 
@@ -403,7 +411,7 @@ Game_CharacterBase.prototype.createChildSprite = function(parentSprite, spriteOb
 };
 
 Game_CharacterBase.prototype.removeChildSprite = function(spriteParentName) {
-  this.forceUpdate = true;
+  this._sprite.forceUpdate = true;
   var children = this._spriter._spriteChildren;
 
   for (var i = 0; i < children.length; i++) {
@@ -485,7 +493,7 @@ Game_Event.prototype.refresh = function() {
 var spriter_alias_Game_Party_addActor = Game_Party.prototype.addActor;
 Game_Party.prototype.addActor = function(actorId) {
     spriter_alias_Game_Party_addActor.call(this, actorId);
-    if (!this._actors.contains(actorId)) {
+    if (this._actors.contains(actorId)) {
 
       // Adds a request to create Spriter Character for Actor.
     	$infoSpriter._followerRequests.push(actorId);
@@ -554,7 +562,6 @@ Spriteset_Map.prototype.updateFollowers = function() {
         var follower = $gamePlayer.followers()._data[j];
         if (follower.actor() && follower.actor()._actorId == followerId) {
           this._spriterCharacterSprites.push(new Spriter_Character(follower));
-          this.createSpriterChildren(folloewr);
           var index = this._spriterCharacterSprites.length - 1;
           this._tilemap.addChild(this._spriterCharacterSprites[index]);
           $infoSpriter._followerRequests = [];
@@ -747,7 +754,26 @@ Spriter_Base.prototype.displaceSprite = function() {
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.update = function() {
     Sprite_Base.prototype.update.call(this);
+    this.checkCharacterState();
     this.updateSprite();
+};
+
+Spriter_Base.prototype.checkCharacterState = function() {
+  if (this.characterIsErased()) {
+    this.parent.removeChild(this);
+    delete this;
+  }
+};
+
+Spriter_Base.prototype.characterIsErased = function() {
+  var character = this._character;
+  if (character instanceof Game_Event && character._erased) {
+      return true;
+  }
+  else if (character instanceof Game_Follower && !character.actor()) {
+      return true;
+  }
+    return false;
 };
 
 Spriter_Base.prototype.updateDisplay = function() {
@@ -1343,7 +1369,7 @@ Spriter_Base.prototype.updateObjectTexture = function(item) {
 
     // Determine if the texture is from Note Data or Actor equipment
     var tagForEquipment = this.getForEquipment(item);
-    if (tagForEquipment != '' && (this._character instanceof Game_Player || this._character instanceof Game_Follower)) {
+    if (tagForEquipment && (this._character instanceof Game_Player || (this._character instanceof Game_Follower && this._character.actor()))) {
       var i = this.loadFromEquipment(item, tagForEquipment);
     }
     else {
@@ -1361,7 +1387,7 @@ Spriter_Base.prototype.getForEquipment = function(item) {
        }
     }
   }
-  return '';
+  return false;
 };
 
 Spriter_Base.prototype.loadFromNotes = function (item) {
@@ -1422,6 +1448,7 @@ Spriter_Base.prototype.loadFromEquipment = function (item, tag) {
   }
 
   // Check if Skinset or single Bitmap
+  var name = equipment.meta.Name || equipment.name // In case many armors share same skin
   var folder = equipment.meta.Folder || '';
   var isFullSprite = eval(equipment.meta.IsFullSprite) || false;
   if (isFullSprite) {
@@ -1430,8 +1457,8 @@ Spriter_Base.prototype.loadFromEquipment = function (item, tag) {
   }
   else {
     skin = 'Single Bitmaps';
-    path = "Spriter/Single Bitmaps/" + folder + equipment.name;
-    fileName = equipment.name + ".png";
+    fileName = name + ".png";
+    path = "Spriter/Single Bitmaps/" + folder + fileName;
   }
 
   i.path = path;
@@ -1442,41 +1469,37 @@ Spriter_Base.prototype.loadFromEquipment = function (item, tag) {
 
 Spriter_Base.prototype.getActor = function() {
   if (this._character instanceof Game_Player) {
-    actorId = $gameParty.leader()._actorId;
+    return $gameParty.leader();
   }
   else if (this._character instanceof Game_Follower) {
-    actorId =  this._character.actor()._actorId;
+    return  this._character.actor();
   }
-  return $dataActors[actorId];
 };
 
 Spriter_Base.prototype.getEquipment = function(tag, actor) {
   if (tag == "Weapon") {
-    var weaponId = actor.equips[0];
+    var weaponId = actor._equips[0]._itemId;
     return $dataWeapons[weaponId];
   }
   else {
     var armorId;
     switch (tag) {
       case "Shield" :
-        armorId = actor.equips[1];
+        armorId = actor._equips[1]._itemId;
       break;
       case "Head" :
-        armorId = actor.equips[2];
+        armorId = actor._equips[2]._itemId;
       break;
       case "Body" :
-        armorId = actor.equips[3];
+        armorId = actor._equips[3]._itemId;
       break;
       case "Accessory" :
-        armorId = actor.equips[4];
+        armorId = actor._equips[4]._itemId;
       break;
     }
-
     return $dataArmors[armorId];
   }
-
-
-}
+};
 
 Spriter_Base.prototype.bitmapIsPacked = function (path) {
     return path.contains(texturePackerCharacter);
