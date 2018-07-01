@@ -41,16 +41,9 @@
  * @desc The character/s you use on folders containing TexturePacker spritesheets.
  * @default $
  *
- * @param Limit Process Check
- * @desc Limits the amount of times certain processes are run. Limits processing power needed for plugin to run.
- * @default false
- * @type boolean
- * @on Enabled
- * @off Disabled
- *
  * @param Limit Frame Counter
  * @desc If Limit Process Check is On, determine in how many frames a Spriter Sprite will be updating.
- * @default 1
+ * @default 0
  *
  * @param Animations Folder
  * @desc Folder where animations are kept.
@@ -262,8 +255,7 @@
   var evaluateParameters = eval(parameters['Evaluate Parameters'] || false);
   var logAnimations = eval(parameters['Log Animations'] || false);
   var texturePackerCharacter = parameters['TexturePacker Folder Character'] || "$";
-  var limitProcessCheck = eval(parameters['Limit Process Check'] || false);
-  var limitCounter = parameters['Limit Frame Counter'] || "1";
+  var limitCounter = Number(parameters['Limit Frame Counter']) || 0;
   var animFolder = parameters['Animations Folder'] || "data/animations/";
   var spriteFolder = parameters['Spriter Sprite Folder'] || "img/characters/";
 
@@ -370,7 +362,7 @@ Game_CharacterBase.prototype.changeSkinPart = function(originName, newSkin, isFu
 };
 
 Game_CharacterBase.prototype.removeSkinPart = function(originName) {
-    this._sprite.forceUpdate = true;
+    this._spriter.forceUpdate = true;
     a = {};
     a.originName = originName;
     for (i = 0; i < this._spriter._skinParts.length; i++) {
@@ -385,7 +377,7 @@ Game_CharacterBase.prototype.removeSkinPart = function(originName) {
 }
 
 Game_CharacterBase.prototype.createChildSprite = function(parentSprite, spriteObjectName) {
-    this._sprite.forceUpdate = true;
+    this._spriter.forceUpdate = true;
 
     var children = this._spriter._spriteChildren;
 
@@ -411,7 +403,7 @@ Game_CharacterBase.prototype.createChildSprite = function(parentSprite, spriteOb
 };
 
 Game_CharacterBase.prototype.removeChildSprite = function(spriteParentName) {
-  this._sprite.forceUpdate = true;
+  this._spriter.forceUpdate = true;
   var children = this._spriter._spriteChildren;
 
   for (var i = 0; i < children.length; i++) {
@@ -646,7 +638,6 @@ Spriter_Base.prototype.initMembers = function() {
     this._spriteMaskY = null;
     this._repeat = false;
     this._spriteMask = {};
-    this._limitCounter = 0;
     this._spriteType = '';
 };
 
@@ -683,6 +674,7 @@ Spriter_Base.prototype.getAnimation = function(name) {
 // Set sprite's objects, bones and layers
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.initSprite = function() {
+	this._waitCounter = limitCounter;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
     this._sprite = new Sprite();
     this._group = new PIXI.display.Group(0, true);
@@ -753,9 +745,16 @@ Spriter_Base.prototype.displaceSprite = function() {
 // Updating Sprite
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.update = function() {
-    Sprite_Base.prototype.update.call(this);
-    this.checkCharacterState();
-    this.updateSprite();
+	if (this._waitCounter == limitCounter) {
+		Sprite_Base.prototype.update.call(this);
+	    this.checkCharacterState();
+	    this.updateSprite();
+	    this._waitCounter = 0;
+	}
+	else {
+		this._waitCounter++;
+	}
+
 };
 
 Spriter_Base.prototype.checkCharacterState = function() {
@@ -786,6 +785,8 @@ Spriter_Base.prototype.updateDisplay = function() {
 
 Spriter_Base.prototype.resetSpriterSprite = function() {
     this._character._spriter.forceUpdate = true;
+    this._character._spriter.tag = [];
+    this._character._spriter.var = {};
     this._animationFrame = 0;
     this._key = 0;
     this._character._spriter.frame = 0;
@@ -800,7 +801,9 @@ Spriter_Base.prototype.refreshSpriterSprite = function() {
     delete this._layer;
     delete this._group;
     this.initSprite();
-    this.start();
+      this.start();
+    if (!this._character instanceof Game_Battler) {
+    }
     this.displaceSprite();
     this._animLength = Number(this._animation.entity.animation[this._animationId].length);
     this._repeat = this._animation.entity.animation[this._animationId].looping || "true";
@@ -808,14 +811,18 @@ Spriter_Base.prototype.refreshSpriterSprite = function() {
     this.updateDisplay();
 };
 
+Spriter_Base.prototype.start = function() {
+};
+
 //-------------------------------------------------------------------------------------------------------------
 // Change animation according to character direction and reser sprite
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.updateDirection = function() {
-    if ((this._character._direction - 2) / 2 != this._animationId && !this._stop){
+  if ((this._character._direction - 2) / 2 != this._animationId && !this._stop){
         this._animationId = (this._character._direction - 2) / 2;
         this.resetSpriterSprite();         
     }
+
 };
 
 
@@ -823,22 +830,14 @@ Spriter_Base.prototype.updateDirection = function() {
 // Check elements of Sprite that should be updated according to the character's condition
 //------------------------------------------------------------------------------------------------------------- 
 Spriter_Base.prototype.updateSprite = function() {
-    if (!this._stop) {
-        if (!limitProcessCheck || this._limitCounter === 0) {
-    	    this.checkChanges();
-            this.setCharacterSprite();
-            this.updateTagsAndVars();
-        }
-        if (this._limitCounter == limitCounter) {
-            this._limitCounter = 0;
-        }
-        else {
-            this._limitCounter++;
-        }
-        if (this.isItemMoving(this._character)) {
-            this._resetter = false;
-            this.updateFrame();
-        }
+    if (!this._stop) {  
+		this.checkChanges();
+		this.setCharacterSprite();
+		this.updateTagsAndVars();
+		if (this.isItemMoving()) {
+		  this._resetter = false;
+		  this.updateFrame();
+		}
 
         // Snap Recovery resets animation when movement stops.
         else if (this._recovery == "snap") {
@@ -846,19 +845,19 @@ Spriter_Base.prototype.updateSprite = function() {
             // Character movement stops after the completion of a step
             // this._resetter resets the animation if !this._character.isItemMoving() for more that one update loop.
             if (this._resetter) {
-                this._key = 0;
-                this._animationFrame = 0;
-                this._character._spriter.frame = 0;
-                this._character._spriter.key = 0;
-        		this.updateDisplay();
+              this._key = 0;
+              this._animationFrame = 0;
+              this._character._spriter.frame = 0;
+              this._character._spriter.key = 0;
+        		  this.updateDisplay();
             }
             else {
-                this._resetter = true;
+              this._resetter = true;
             }
         }
     }
     else {
-        this.checkChanges();	
+      this.checkChanges();	
     }
     this.checkReset();
 };
@@ -874,9 +873,9 @@ Spriter_Base.prototype.checkReset = function() {
     }
 };
 
-Spriter_Base.prototype.isItemMoving = function(character) {
+Spriter_Base.prototype.isItemMoving = function() {
   if (this instanceof Spriter_Character) {
-      return character._stepAnime || character.isMoving() && character._walkAnime;
+      return this._character._stepAnime || this._character.isMoving() && this._character._walkAnime;
   }
   else {
     return true;
@@ -951,7 +950,7 @@ Spriter_Base.prototype.fixKeys = function () {
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.updateFrame = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
-    var speed = this._speed;
+    var speed = this._speed * (limitCounter + 1);
     var nextKeyTime;
     var lastKeyTime = Number(this._pathMain[this._pathMain.length - 1].time);
 
@@ -991,46 +990,6 @@ Spriter_Base.prototype.updateFrame = function() {
                 this._animationFrame += speed;
             }
 
-        }
-    }
-    else if (speed < 0) {
-
-        // Works Until First Key
-        if (this._key > 0) {
-
-            nextKeyTime = Number(this._pathMain[this._key - 1].time) || 0;
-
-            // If animationFrame is bigger than next Key Time, then  animationFrame = next Key Time
-            if (this._animationFrame > nextKeyTime && this._animationFrame + speed <= nextKeyTime) {
-                this._key--; 
-                this._animationFrame = nextKeyTime;
-            }
-            else {
-                this._animationFrame += speed;
-            }  
-        }
-
-        // Works For First Key
-        else if (this._key === 0) {
-
-            // If animationFrame is 0 and Animation repeats, then animationFrame = Animation Length
-    		if (this._animationFrame === 0 && this._repeat) {
-                this._animationFrame = this._animLength;        
-            }
-            // If animationFrame is smaller than 0 and Animation repeats  animationFrame = Animation Length
-            else if (this._animationFrame + speed < 0 && this._repeat) {
-                this._animationFrame = this._animLength;
-            }
-            else if (this._animationFrame + speed <= lastKeyTime && this._repeat) {
-            	this._key = this._pathMain.length - 1; 
-                this._animationFrame = lastKeyTime;
-            }
-            else if (this._animationFrame == lastKeyTime && this._repeat) {
-				this._animationFrame += speed;
-            } 
-            else {
-                this._animationFrame += speed;
-            }  
         }
     }
     this.updateDisplay();
@@ -1088,7 +1047,7 @@ Spriter_Base.prototype.refreshSprite = function() {
                 this._element[i].usedForKey = false;
             }
             else {
-                this._element[i].bitmap = null;
+                //this._element[i].bitmap = null;
             }
         }
     }
@@ -1173,7 +1132,7 @@ Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
   		for (var i = 0; i < meta.tagline.key.length; i++) {
     		var tagKey = meta.tagline.key[i]
     		var tagTime = Number(tagKey.time) || 0
-    		if (tagTime == this._animationFrame) {
+    		if (this.tagsAndVarsCurrentKey(item, tagTime)) {
           item.tags = [];
     			for (var j = 0; j < tagKey.tag.length; j++) {
     				var tagId = Number(tagKey.tag[j].t);
@@ -1191,7 +1150,7 @@ Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
   				for (var k = 0; k < varKey.var[j].key.length; k++) {
   					var varKey = meta.varline.key[j].key[k];
   					var varTime = Number(varKey.time) || 0
-  					if (varTime == this._animationFrame) {
+  					if (this.tagsAndVarsCurrentKey(item, tagTime)) {
   						if (variable.type == 'int') {
   							item.vars[variable.name] = Number(varKey.val);
   						}
@@ -1218,6 +1177,20 @@ Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
     	}
   	}
   }
+};
+
+Spriter_Base.prototype.tagsAndVarsCurrentKey = function(item, tagTime) {
+ 
+  if (!this.isAnimated(item) &&  tagTime >= this._animationFrame) {
+    return true;
+  }
+  else if (tagTime == this._animationFrame) {
+    return true;
+  }
+  else if (this.isBetweenKeys(item)) {
+    return true;
+  }
+    return false;
 };
 
 // Determines Next Key according to this._speed sign
@@ -1249,14 +1222,7 @@ Spriter_Base.prototype.getNextKey = function(item) {
 
 // Checks if item has more than one Key (has change in values, ergo, animation)
 Spriter_Base.prototype.isAnimated = function(item) {
-	if (item.type == "bone") {
-		id = item.timelineId;
-		return this._pathTime[id].key.length > 1;
-	}
-	else {
-		id = item.timelineId;
-		return this._pathTime[id].key.length > 1;
-	}
+    return this._pathTime[id].key.length > 1;
 };
 
 
@@ -1332,6 +1298,7 @@ Spriter_Base.prototype.setOnKey = function(item) {
     // ---------------------------------------------------
 
     // Set Texture for Sprite ----------------------------
+
     this.updateTexture(item);
     // ---------------------------------------------------
 
@@ -1352,7 +1319,6 @@ Spriter_Base.prototype.setOnKey = function(item) {
 
 // Assigns the correct image for object / draws bitmap for bone.
 Spriter_Base.prototype.updateTexture = function (item) {
-
 	// Object Bitmaps / Character Parts
 	if (item.type === "object") {
       this.updateObjectTexture(item);
@@ -1369,13 +1335,12 @@ Spriter_Base.prototype.updateObjectTexture = function(item) {
 
     // Determine if the texture is from Note Data or Actor equipment
     var tagForEquipment = this.getForEquipment(item);
-    if (tagForEquipment && (this._character instanceof Game_Player || (this._character instanceof Game_Follower && this._character.actor()))) {
+    if (tagForEquipment && this.characterIsActor()) {
       var i = this.loadFromEquipment(item, tagForEquipment);
     }
     else {
       var i = this.loadFromNotes(item);
     }
-
     return i;
 };
 
@@ -1388,6 +1353,21 @@ Spriter_Base.prototype.getForEquipment = function(item) {
     }
   }
   return false;
+};
+
+Spriter_Base.prototype.characterIsActor = function() {
+  if (this._character instanceof Game_Player) {
+    return true;
+  }
+  else if (this._character instanceof Game_Follower && this._character.actor()) {
+    return true;
+  }
+  else if (this._character instanceof Game_Actor){
+    return true;
+  }
+  else {
+    return false;
+  }
 };
 
 Spriter_Base.prototype.loadFromNotes = function (item) {
@@ -1474,6 +1454,9 @@ Spriter_Base.prototype.getActor = function() {
   else if (this._character instanceof Game_Follower) {
     return  this._character.actor();
   }
+  else if (this._character instanceof Game_Actor) {
+    return this._character;
+  }
 };
 
 Spriter_Base.prototype.getEquipment = function(tag, actor) {
@@ -1517,16 +1500,33 @@ Spriter_Base.prototype.unpackTexture = function (item, skin, fileName) {
     var isRotated = packerData.frames[fileName].rotated;
     var texture = $spriterTextures["/" + spriteFolder + "Spriter/" + skin + "/"  + name + ".png"];
     if (isRotated) {
-      item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.h,frame.w));
-      item.texture.rotate = 2;
+		item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.h,frame.w));
+		item.texture.rotate = 2;
+      	var originX = source.x  - (source.x * item.anchor.y * 2)
+		var originY = source.y  - (source.y * item.anchor.x * 2)
     }
     else {
-      item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.w,frame.h));
+      	item.texture = new PIXI.Texture(texture, new PIXI.Rectangle(frame.x,frame.y,frame.w,frame.h));
+      	var originX = source.x - (source.x * item.anchor.x * 2)
+		var originY = source.y - (source.y * item.anchor.y * 2)
     }
-      var originX = source.x - (source.x * item.anchor.x * 2)
-      var originY = source.y - (source.y * item.anchor.y * 2)
-      item.texture.trim = new PIXI.Rectangle(originX,originY,source.w,source.h);
 
+	if (isRotated) {
+		item.texture.trim = new PIXI.Rectangle(originY, originX,source.w,source.h);
+
+
+	}
+	else {
+		item.texture.trim = new PIXI.Rectangle(originX,originY,source.w,source.h);
+	}
+
+};
+
+Spriter_Base.prototype.getRotatedCoordinates = function(x, y) {
+	rotX = (y * Math.cos(Math.PI/2)) - (x * Math.sin(Math.PI/2));
+	rotY = (y * Math.sin(Math.PI/2)) + (x * Math.cos(Math.PI/2));
+
+	return new PIXI.Point(rotX, rotY);
 };
 
 Spriter_Base.prototype.updateBoneBitmap = function(item) {
@@ -1564,7 +1564,6 @@ Spriter_Base.prototype.addChildSprites = function (item, w, h) {
       this._element[id].parentGroup = this._group;
       this._element[id].zIndex = z;
       this._character._spriter._spriteRequests = [];
-      this.refreshSpriterSprite();
     }
   }
 };
@@ -1577,7 +1576,6 @@ Spriter_Base.prototype.removeChildSprites = function(item) {
     for (var j = 0; j < childrenSprites.length; j++) {
       if (requests[i] == childrenSprites[j]._character._spriteParent) {
         childrenSprites.splice(j,1);
-        this.refreshSpriterSprite();
         this._character._spriter._spriteRemoveRequests = [];
       }
     }
@@ -1780,7 +1778,7 @@ Spriter_Base.prototype.tween = function(item) {
 
     // Set Texture for Sprite ----------------------------
     // this._character._spriter.forceUpdate is True when when the player uses a plugin command to change Bitmaps
-    if (this._character._spriter.forceUpdate || !limitProcessCheck) {
+    if (this._character._spriter.forceUpdate) {
         this.updateTexture(item);
     } 
     // ---------------------------------------------------
@@ -1946,7 +1944,12 @@ Spriter_Character.prototype.setInitialCharacter = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
+    if (!this._pathMain[this._key]) {
+      this._key = 0;
+    }
+
     // Set Bones
+
     if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
 
         //Setting Bone Inheritance
@@ -2062,6 +2065,11 @@ Spriter_Character.prototype.setInitialElements = function(n, item) {
 };
 
 Spriter_Character.prototype.update = function() {
+	setTimeout(this.updateSpriterCharacter(), 500);
+
+};
+
+Spriter_Character.prototype.updateSpriterCharacter = function() {
     this.updateDirection();
     Spriter_Base.prototype.update.call(this);
     this.updatePosition();
@@ -2099,6 +2107,9 @@ Spriter_Character.prototype.updateObjectTexture = function(item) {
       }
       else {
           item.name = i.path;
+          if (!$spriterTextures["/img/characters/" + i.path]) {
+            throw "Image: " +"/img/characters/" + i.path + " does not exist."
+          }
           item.texture = $spriterTextures["/img/characters/" + i.path];
       }
     }
@@ -2610,6 +2621,9 @@ function obj2Arr(data) {
                 }
                 
                 for (var l = 0; l < data.entity.animation[i].timeline[k].meta.tagline.key.length; l++) {
+                  if (!data.entity.animation[i].timeline[k].meta.tagline.key[l].tag) {
+                    data.entity.animation[i].timeline[k].meta.tagline.key[l].tag = [];
+                  }
                   if (data.entity.animation[i].timeline[k].meta.tagline.key[l].tag.constructor == Object) {
                     temp = data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
                     delete data.entity.animation[i].timeline[k].meta.tagline.key[l].tag;
@@ -2618,6 +2632,9 @@ function obj2Arr(data) {
                 }
               }
               else if (data.entity.animation[i].timeline[k].meta.hasOwnProperty('varline')) {
+                if (!data.entity.animation[i].timeline[k].meta.varline) {
+                  data.entity.animation[i].timeline[k].meta.varline = [];
+                }
               	if (data.entity.animation[i].timeline[k].meta.varline.constructor == Object) {
               		temp = data.entity.animation[i].timeline[k].meta.varline;
               		delete data.entity.animation[i].timeline[k].meta.varline;
@@ -3620,7 +3637,7 @@ UnitBezier.prototype.solve = function (x, epsilon) {
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
-// Game_SpriterCharacte
+// Game_SpriterCharacter
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
@@ -3647,6 +3664,7 @@ Game_SpriterCharacter.prototype.initMembers = function(content, spriteParent, id
     this._id = id;
     this._name = this._content._name;
     this._spriteParent = spriteParent;
+    this._spriter._spriteRequests = [];
     this._spriter._spriteRemoveRequests = [];
 };
 
