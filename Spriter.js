@@ -1,8 +1,8 @@
 //=============================================================================
 // Spriter Pro Plugin
 // by KanaX
-// version 1.3.5
-// Last Update: 2018.04.30
+// version 1.3.6
+// Last Update: 2018.07.12
 //=============================================================================
 
 /*:
@@ -235,6 +235,10 @@
  * 04/30/2018: Fixed saving bug.
  *             Formatted the core classes for future add-ons and updates.
  *             Added ability to tag sprites to be replaced with equiped items.
+ * 07/12/2018: Fixed Bug regarding deletion of unused sprite parts.
+ * 			   Added game variable control via tags.
+ *             Added self switch control via tags.
+ *             Added functional update limiter.
  *             
  * ----------------------------------------------------------------------------
  *
@@ -249,6 +253,7 @@
  *
  *
  */
+ 
   var parameters = $plugins.filter(function(p) { return p.description.contains('<Spriter>'); })[0].parameters;
   var showSkeleton = eval(parameters['Show Skeleton'] || false);
   var showFrames = eval(parameters['Show Frames'] || false);
@@ -436,7 +441,7 @@ Game_CharacterBase.prototype.getCharacterGlobal = function() {
 Game_CharacterBase.prototype.eventDataExists = function () {
     var map = $infoSpriter.maps["map_" + $gameMap._mapId];
     if (!map.hasOwnProperty("event_" + String(this._eventId))) {
-      map["event_" + String(this._eventId)] = {};
+      	map["event_" + String(this._eventId)] = {};
     }
 };
 
@@ -655,7 +660,7 @@ Spriter_Base.prototype.setCharacter = function(character) {
     this._stop = this._character._spriter._stop;
     this._spriteMask.available = this._character._spriter._spriteMask.available;
     if (this._spriteMask.available) {
-      this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
+      	this._spriteMask.x = Number(this._character._spriter._spriteMask.x);
   		this._spriteMask.y = Number(this._character._spriter._spriteMask.y);
   		this._spriteMask.w = Number(this._character._spriter._spriteMask.w);
   		this._spriteMask.h = Number(this._character._spriter._spriteMask.h);
@@ -885,6 +890,7 @@ Spriter_Base.prototype.isItemMoving = function() {
 Spriter_Base.prototype.checkChanges = function() {
 
     if (this._skeleton !== this._character._spriter._skeleton) {
+
         // Resetting the whole Sprite
         this._skeleton = this._character._spriter._skeleton;
         this._skin = this._character._spriter._skin;
@@ -1002,6 +1008,10 @@ Spriter_Base.prototype.setCharacterSprite = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
+    for (var i = 0; i < this._element.length; i++) {
+    	this._element[i].usedForKey = false;
+    }
+
     // Set Bones
     if (this._pathMain[this._key].hasOwnProperty('bone_ref')) {
 
@@ -1021,6 +1031,7 @@ Spriter_Base.prototype.setCharacterSprite = function() {
 
         //Going through all Objects for Current Key
         for(var l = 0; l < this._pathMain[this._key].object_ref.length; l++){
+
             item = this.getItemForTime("object", l);
 
             //Setting Object Inheritance
@@ -1035,7 +1046,7 @@ Spriter_Base.prototype.setCharacterSprite = function() {
         this._character._spriter.forceUpdate = false;
     }
 
-    this.refreshSprite();
+	this.refreshSprite();
 };
 
 // Clears items which are not used for current Key
@@ -1043,11 +1054,8 @@ Spriter_Base.prototype.refreshSprite = function() {
     currentKeyTime = Number(this._pathMain[this._key].time) || 0;
     if (this._speed > 0 && this._animationFrame == currentKeyTime) {
         for (var i = 0; i < this._element.length; i++) {
-            if (this._element[i].usedForKey) {
-                this._element[i].usedForKey = false;
-            }
-            else {
-                //this._element[i].bitmap = null;
+            if (!this._element[i].usedForKey) {
+                this._element[i].texture = PIXI.Texture.EMPTY;
             }
         }
     }
@@ -1108,8 +1116,8 @@ Spriter_Base.prototype.getItemForTime = function(type, i) {
     	item.firstKeyTime = Number(this._pathTime[item.timelineId].key[0].time) || 0;
 	}
 
-	 item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
-   item.nextKeyTime = Number(item.nextKey.time) || 0;
+	item.nextKey = this._pathTime[item.timelineId].key[this.getNextKey(item)];
+   	item.nextKeyTime = Number(item.nextKey.time) || 0;
 
     this.updateItemTagsAndVars(item);
 
@@ -1133,7 +1141,7 @@ Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
     		var tagKey = meta.tagline.key[i]
     		var tagTime = Number(tagKey.time) || 0
     		if (this.tagsAndVarsCurrentKey(item, tagTime)) {
-          item.tags = [];
+         	 item.tags = [];
     			for (var j = 0; j < tagKey.tag.length; j++) {
     				var tagId = Number(tagKey.tag[j].t);
     				var tagName = this._animation.tag_list.i[tagId].name;
@@ -1289,7 +1297,7 @@ Spriter_Base.prototype.setOnKey = function(item) {
 	    a = Number(a);
 
     	// Setting Object Values for Key
-      item.alpha = a;
+      	item.alpha = a;
 	    item.anchor.x = ax;
 	    item.anchor.y = ay;
 	    
@@ -1378,7 +1386,7 @@ Spriter_Base.prototype.loadFromNotes = function (item) {
   var fileName = this._animation.folder[folderId].file[fileId].name.replace(/\_(\d){3}/, '');
   var skin = this._skin;
   var skinParts = this._skinParts;
-  var path = "Spriter/"+ skin + "/" + fileName;
+  var path = "Spriter/" + skin + "/" + fileName;
   var i = {};
 
   // Check for Skin Parts
@@ -2948,31 +2956,61 @@ Game_CharacterBase.prototype.update = function() {
 Game_CharacterBase.prototype.checkTags = function() {
 	if (this.hasOwnProperty("_spriter")) {
 		for (var i = 0; i < this._spriter.tag.length; i++) {
-
-			if (this._spriter.tag[i].name.includes("se,")) {
-				tagArray = this._spriter.tag[i].name.split(",");
-				params = {};
-				params.name = tagArray[1];
-				params.pan = tagArray[2];
-				params.pitch = tagArray[3];
-				params.volume = Number(tagArray[4]);
-        if (tagArray[5] === "true") {
-            maxVolumeArea = Number(tagArray[6]);
-            maxArea = Number(tagArray[7]);
-            dx = Math.abs(this.x - $gamePlayer.x);
-            dy = Math.abs(this.y - $gamePlayer.y);
-            d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
-            if (d > maxVolumeArea && (d - maxVolumeArea) <= maxArea) {
-                params.volume -= params.volume * (d - maxVolumeArea) / maxArea;
-            }
-            else if ((d - maxVolumeArea) > maxArea) {
-                params.volume = 0;
-            }
-        }
-    		AudioManager.playSe(params);
-			}
+			this.checkForSpecialTag(this._spriter.tag[i]);
 		}
 	}
+};
+
+Game_CharacterBase.prototype.checkForSpecialTag = function(tag) {
+	if (tag.name.includes("se,")) {
+		this.playSpriterSE(tag);
+	}
+	else if (tag.name.includes("g-variable,")) {
+		this.changeGameVariable(tag);
+	}
+	else if (tag.name.includes("s-switch,")) {
+		this.changeSelfSwitch(tag);
+	}
+};
+
+Game_CharacterBase.prototype.playSpriterSE = function(tag) {
+	tagArray = tag.name.split(",");
+	params = {};
+	params.name = tagArray[1];
+	params.pan = tagArray[2];
+	params.pitch = tagArray[3];
+	params.volume = Number(tagArray[4]);
+    if (tagArray[5] === "true") {
+        maxVolumeArea = Number(tagArray[6]);
+        maxArea = Number(tagArray[7]);
+        dx = Math.abs(this.x - $gamePlayer.x);
+        dy = Math.abs(this.y - $gamePlayer.y);
+        d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+        if (d > maxVolumeArea && (d - maxVolumeArea) <= maxArea) {
+            params.volume -= params.volume * (d - maxVolumeArea) / maxArea;
+        }
+        else if ((d - maxVolumeArea) > maxArea) {
+            params.volume = 0;
+        }
+    }
+	AudioManager.playSe(params);
+};
+
+Game_CharacterBase.prototype.changeGameVariable = function(tag) {
+	tagArray = tag.name.split(",");
+	var id = eval(tagArray[1]);
+	var value = eval(tagArray[2]);
+	$gameVariables.setValue(id, value);
+};
+
+Game_CharacterBase.prototype.changeSelfSwitch = function(tag) {
+	if (this instanceof Game_Event) {
+		tagArray = tag.name.split(",");
+		var key = tagArray[1];
+		var value = eval(tagArray[2]);
+		$gameSelfSwitches.setValue([$gameMap.mapId(), this._eventId, key], value);
+	}
+
 };
 
 //-------------------------------------------------------------------------------------------------------------
