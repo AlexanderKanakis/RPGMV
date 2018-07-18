@@ -288,6 +288,8 @@ Game_CharacterBase.prototype.initMembers = function() {
     this._spriter._showSkeleton = false;
     this._spriter._spriteRequests = [];
     this._spriter._spriteRemoveRequests = [];
+    this._spriter._scaleX = 1;
+    this._spriter._scaleY = 1;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -461,27 +463,56 @@ var spriter_alias_Game_Follower_refresh = Game_Follower.prototype.refresh;
 Game_Follower.prototype.refresh = function() {
   spriter_alias_Game_Follower_refresh.call(this);
   if (this.actor()) {
-	var followerNotes = $dataActors[this.actor()._actorId].meta;
+    var followerNotes = $dataActors[this.actor()._actorId].meta;
     if (followerNotes.hasOwnProperty("Spriter")) {
-		this.setAnimationInfo(this, null, this.isVisible());
+		  this.setAnimationInfo(this, null, this.isVisible());
     }
   }
 };
 
 var spriter_alias_Game_Event_refresh = Game_Event.prototype.refresh;
 Game_Event.prototype.refresh = function() {
+  this.checkForNewSpriterSprite();
 	spriter_alias_Game_Event_refresh.call(this);
-	if (this._pageIndex >= 0) {
-		var commandList = this.page(this._pageIndex).list;	
-		for (var i = 0; i < commandList.length; i++) {
-	    	if (commandList[i].code == 108){
-	        	if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
-	        		this.setAnimationInfo(this, commandList[i], true);
-	        		break;
-	        	}
-	        }
-	    }	
+
+  // Change Animation if the New Page has a Spriter Comment
+  var pageSpriterInfo = this.hasSpriterSprite(this._pageIndex);
+	if (pageSpriterInfo) {
+    this.setAnimationInfo(this, pageSpriterInfo, true);
 	}
+};
+
+Game_Event.prototype.checkForNewSpriterSprite = function () {
+  var newPageIndex = this._erased ? -1 : this.findProperPageIndex();
+
+  // If Event doesn't have a Spriter Sprite and New Page has a Spriter Comment Request new Spriter Sprite
+  if (this._pageIndex !== newPageIndex && this.newPageAddsSprite(newPageIndex)) {
+
+      // Adds a request to create Spriter Character for Actor.
+      $infoSpriter._eventRequests.push(this._eventId);
+  }
+}
+
+// Check if Current Page has Spriter Comment
+Game_Event.prototype.hasSpriterSprite = function (pageIndex) {
+  if (this.event().pages[pageIndex]) {
+    var commandList = this.event().pages[pageIndex].list;  
+    for (var i = 0; i < commandList.length; i++) {
+        if (commandList[i].code == 108){
+            if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
+              return commandList[i];
+              break;
+            }
+          }
+      } 
+  }
+  return false;
+};
+
+// If Event doesn't have a Spriter Sprite and New Page has a Spriter Comment
+Game_Event.prototype.newPageAddsSprite = function (newPageIndex) {
+  var newPage = this.hasSpriterSprite(newPageIndex);  
+  return this._spriter._skeleton == null && newPage;  
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -545,6 +576,7 @@ Spriteset_Map.prototype.update = function() {
 	spriter_alias_Spriteset_Map_update.call(this);
 	if ($infoSpriter) {
 		this.updateFollowers();
+    this.updateEvents()
 	}
 };
 
@@ -565,6 +597,18 @@ Spriteset_Map.prototype.updateFollowers = function() {
         }
       }
     }     
+  }
+};
+
+Spriteset_Map.prototype.updateEvents = function() {
+  var eventRequests = $infoSpriter._eventRequests;
+  for (var i = 0; i < eventRequests.length; i ++) {
+    var eventId = eventRequests[i];
+    var event = $gameMap._events[eventId];
+    this._spriterCharacterSprites.push(new Spriter_Character(event));
+    var index = this._spriterCharacterSprites.length - 1;
+    this._tilemap.addChild(this._spriterCharacterSprites[index]);
+    $infoSpriter._eventRequests = [];
   }
 };
 
@@ -730,10 +774,6 @@ Spriter_Base.prototype.initSprite = function() {
         this.addChild(myMask);
         this.mask = myMask;
     }
-    this._character._spriter._sizeX = this.scale.x;
-    this._character._spriter._sizeY = this.scale.y;
-
-
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -922,6 +962,12 @@ Spriter_Base.prototype.checkChanges = function() {
     if (this._stop !== this._character._spriter._stop) {
         this._stop = this._character._spriter._stop;
     }
+    if (this.scale.x !== this._character._spriter._scaleX) {
+      this.scale.x = this._character._spriter._scaleX
+    }
+    if (this.scale.y !== this._character._spriter._scaleY) {
+      this.scale.y = this._character._spriter._scaleY
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1008,6 +1054,7 @@ Spriter_Base.prototype.setCharacterSprite = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
 
+    // Reset Element Usability. Unused Elements for this Run will be cleared on refreshSprite.
     for (var i = 0; i < this._element.length; i++) {
     	this._element[i].usedForKey = false;
     }
@@ -1814,11 +1861,9 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
             for (var i = 0; i < varline.length; i++) {
                 for (var j = 0; j < varline[i].key.length; j++) {
                     time = Number(varline[i].key[j].time);
-                    case_1 = "this._animationFrame == time";
-                    case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
 
                     // Making Sure that the Var updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
-                    if (eval(case_1) || eval(case_2)) {
+                    if (this.isKeyTime(time)) {
                         var varId = Number(varline[i].def);
                         var def = this._animation.entity.var_defs.i[varId];
                         if (def.type === "string") {
@@ -1845,10 +1890,9 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
             this._globalAnimationInfo.tag = [];
             for (var i = 0; i < tagline.key.length; i++) {
                 time = Number(tagline.key[i].time);
-                case_1 = "this._animationFrame == time";
-                case_2 = "this._animationFrame > time && this._animationFrame < time + this._speed";
+
                 // Making Sure that the Tag updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
-                if (eval(case_1) || eval(case_2)) {
+                if (this.isKeyTime(time)) {
                     if (tagline.key[i].tag) {
                         for (var j = 0; j < tagline.key[i].tag.length; j++) {
 
@@ -1864,6 +1908,10 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
         }
     } 
 };
+
+Spriter_Base.prototype.isKeyTime = function (time) {
+    return this._animationFrame == time || (this._animationFrame > time && this._animationFrame < time + this._speed);
+}
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -2073,7 +2121,8 @@ Spriter_Character.prototype.setInitialElements = function(n, item) {
 };
 
 Spriter_Character.prototype.update = function() {
-	setTimeout(this.updateSpriterCharacter(), 500);
+  this.updateSpriterCharacter()
+// 	setTimeout(this.updateSpriterCharacter(), 500);
 
 };
 
@@ -3750,6 +3799,7 @@ SpriterData.prototype.initialize = function() {
   this.followers._children = [];
   this.maps = {};
   this._followerRequests = [];
+  this._eventRequests = [];
 
   for (var i = 1; i < $dataActors.length; i++) {
       this.followers["follower_" + $dataActors[i].id] = {};
