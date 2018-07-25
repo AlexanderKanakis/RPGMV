@@ -296,7 +296,7 @@ Game_CharacterBase.prototype.initMembers = function() {
 // Give values to properies from meta or stored global values.
 //-------------------------------------------------------------------------------------------------------------
 Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visible) {
-	var notes;
+	var notes = {};
 
 	if (character.constructor == Game_Player) {
 		notes = $dataActors[$gameParty.leader()._actorId].meta;
@@ -305,39 +305,62 @@ Game_CharacterBase.prototype.setAnimationInfo = function(character, list, visibl
 		notes = $dataActors[character.actor()._actorId].meta;
 	}
 	else if (character.constructor == Game_Event) {
-		notes = {};
       // Giving the Event comment a similar format to that of Actor meta data
     	var comment = list.parameters[0].substring(9, list.parameters[0].length - 1);
     	param = comment.split(",");
-    	notes._skeleton = param[0];
-    	notes._skin = param[1];
-    	notes._speed = param[2];
-    	notes._cellX = param[3];
-    	notes._cellY = param[4];
-    	notes._spriteMask = param[5];
-    	if (notes._spriteMask == "true") {
-    		notes._spriteMaskX = param[6];
-    		notes._spriteMaskY = param[7];
-    		notes._spriteMaskW = param[8];
-    		notes._spriteMaskH = param[9];
-    	}
+      notes.Spriter = '{';
+      notes.Spriter += '"_skeleton":' + '"' + param[0] + '"';
+      notes.Spriter += ', "_skin":' + '"' + param[1] + '"';
+      notes.Spriter += ', "_speed":' + param[2];
+      notes.Spriter += ', "_cellX":' + param[3];
+      notes.Spriter += ', "_cellY":' + param[4];
+      notes.Spriter += ', "_spriteMask":' + '"' + param[5] + '"';
+      if (param[5] == 'true') {
+        notes.Spriter += ', "_spriteMaskX":' + param[6];
+        notes.Spriter += ', "_spriteMaskY":' + param[7];
+        notes.Spriter += ', "_spriteMaskW":' + param[8];
+        notes.Spriter += ', "_spriteMaskH":' + param[9];
+      }
+      notes.Spriter += '}';
 	}
   // Getting Character Info stored in global variable. It will replace Meta/Comment data if it exists.
   var globalInfo = this.getCharacterGlobal();
-  character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
-  character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
-  character._spriter._skinParts = globalInfo._skinParts || [];
-  character._spriter._spriteChildren = globalInfo._spriteChildren || [];
-  character._spriter._speed = globalInfo._speed || notes._speed.trim();
-  character._spriter._cellX = notes._cellX.trim();
-  character._spriter._cellY = notes._cellY.trim();
-  character._spriter._stop = globalInfo._stop || false;
-  character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
-  if (character._spriter._spriteMask.available) {
-  	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
-  	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
-  	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
-  	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
+  if (notes.Spriter) {
+    notes = JSON.parse(notes.Spriter);
+    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton : null;
+    character._spriter._skin = visible ? globalInfo._skin || notes._skin : null;
+    character._spriter._skinParts = globalInfo._skinParts || [];
+    character._spriter._spriteChildren = globalInfo._spriteChildren || [];
+    character._spriter._speed = globalInfo._speed || notes._speed;
+    character._spriter._cellX = notes._cellX;
+    character._spriter._cellY = notes._cellY;
+    character._spriter._stop = globalInfo._stop || false;
+    character._spriter._spriteMask.available = notes._spriteMask;
+    if (character._spriter._spriteMask.available) {
+      character._spriter._spriteMask.x = notes._spriteMaskX;
+      character._spriter._spriteMask.y = notes._spriteMaskY;
+      character._spriter._spriteMask.w = notes._spriteMaskW;
+      character._spriter._spriteMask.h = notes._spriteMaskH;
+    }
+  }
+  // Temp animation info for deprecated notes.
+  else {
+    console.log('WARNING: The Spriter Plugin note commands used for actor ' + character.actor()._actorId + ' are deprecated.')
+    character._spriter._skeleton = visible ? globalInfo._skeleton || notes._skeleton.trim() : null;
+    character._spriter._skin = visible ? globalInfo._skin || notes._skin.trim() : null;
+    character._spriter._skinParts = globalInfo._skinParts || [];
+    character._spriter._spriteChildren = globalInfo._spriteChildren || [];
+    character._spriter._speed = globalInfo._speed || notes._speed.trim();
+    character._spriter._cellX = notes._cellX.trim();
+    character._spriter._cellY = notes._cellY.trim();
+    character._spriter._stop = globalInfo._stop || false;
+    character._spriter._spriteMask.available = eval(notes._spriteMask.trim());
+    if (character._spriter._spriteMask.available) {
+    	character._spriter._spriteMask.x = notes._spriteMaskX.trim();
+    	character._spriter._spriteMask.y = notes._spriteMaskY.trim();
+    	character._spriter._spriteMask.w = notes._spriteMaskW.trim();
+    	character._spriter._spriteMask.h = notes._spriteMaskH.trim();
+    }
   }
 };
 
@@ -499,7 +522,7 @@ Game_Event.prototype.hasSpriterSprite = function (pageIndex) {
     var commandList = this.event().pages[pageIndex].list;  
     for (var i = 0; i < commandList.length; i++) {
         if (commandList[i].code == 108){
-            if (commandList[i].parameters[0].substring(1,8) == "Spriter") {
+            if (commandList[i].parameters[0].includes("Spriter")) {
               return commandList[i];
               break;
             }
@@ -1205,7 +1228,7 @@ Spriter_Base.prototype.updateItemTagsAndVars = function (item) {
   				for (var k = 0; k < varKey.var[j].key.length; k++) {
   					var varKey = meta.varline.key[j].key[k];
   					var varTime = Number(varKey.time) || 0
-  					if (this.tagsAndVarsCurrentKey(item, tagTime)) {
+  					if (this.tagsAndVarsCurrentKey(item, varTime)) {
   						if (variable.type == 'int') {
   							item.vars[variable.name] = Number(varKey.val);
   						}
@@ -1245,7 +1268,10 @@ Spriter_Base.prototype.tagsAndVarsCurrentKey = function(item, tagTime) {
   else if (this.isBetweenKeys(item)) {
     return true;
   }
-    return false;
+  else if (this._animationFrame == this._animLength) {
+    return true;
+  }
+  return false;
 };
 
 // Determines Next Key according to this._speed sign
@@ -1855,8 +1881,6 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
     if (this._animation.entity.animation[this._animationId].hasOwnProperty('meta')) {
         // Update Vars
         if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('varline')) {
-            if (this._skeleton == "f_wood_cut_repeat") {
-        }
             var varline = this._animation.entity.animation[this._animationId].meta.varline;
             for (var i = 0; i < varline.length; i++) {
                 for (var j = 0; j < varline[i].key.length; j++) {
@@ -1910,7 +1934,7 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
 };
 
 Spriter_Base.prototype.isKeyTime = function (time) {
-    return this._animationFrame == time || (this._animationFrame > time && this._animationFrame < time + this._speed);
+    return this._animationFrame == time || this._animationFrame == this._animLength || (this._animationFrame > time && this._animationFrame < time + this._speed);
 }
 
 //-------------------------------------------------------------------------------------------------------------
@@ -2167,6 +2191,7 @@ Spriter_Character.prototype.updateObjectTexture = function(item) {
           if (!$spriterTextures["/img/characters/" + i.path]) {
             throw "Image: " +"/img/characters/" + i.path + " does not exist."
           }
+
           item.texture = $spriterTextures["/img/characters/" + i.path];
       }
     }
