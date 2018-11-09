@@ -144,7 +144,7 @@
  * That's why we create SpriterObjects!
  * In SpriterObjects we create faux game objects, with just the bare minimum data to satisfy the needs of the Spriter_Character class. You create a new object, 
  * you give it a name, skeleton, skin and then you can attach it to any character you want!
- * These object are created as comments in the COMMON EVENT with the ID that you assigned on the Spriter Objects Common Event ID:
+ * These objects are created as comments in the COMMON EVENT with the ID that you assigned on the Spriter Objects Common Event ID:
  *
  * <objectName, skeleton, skin, speed, cellX, cellY>
  *
@@ -2619,7 +2619,7 @@ Scene_Boot.prototype.create = function() {
     this.loadSpriterAnimations(animFolder);
     this.loadTexturePackerJSONs("/" + spriteFolder + "Spriter/");
     this.loadTextures("/" + spriteFolder + "Spriter/");
-    this.loadSpriterImgAnimations();
+    //this.loadSpriterImgAnimations();
     this.loadChildrenSprites();
 };
 
