@@ -301,6 +301,7 @@ Game_CharacterBase.prototype.initMembers = function() {
     this._spriter._spriteRemoveRequests = [];
     this._spriter._scaleX = 1;
     this._spriter._scaleY = 1;
+    this._spriter._animLimiter = null;
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -509,6 +510,7 @@ Game_CharacterBase.prototype.checkTags = function() {
 };
 
 Game_CharacterBase.prototype.checkForSpecialTag = function(tag) {
+  console.log(tag.name)
   if (tag.name.includes("se,")) {
     this.playSpriterSE(tag);
   }
@@ -521,6 +523,11 @@ Game_CharacterBase.prototype.checkForSpecialTag = function(tag) {
   else if (tag.name.includes("SkinPart,")) {
     var tagArray = tag.name.split(",")
     this.changeSkinPart(tagArray[1],tagArray[2],tagArray[3]);
+  }
+  else if (tag.name.includes("script<")) {
+  	var scriptCall = tag.name.replace("script<","").replace(">","");
+    console.log(scriptCall)
+  	eval(scriptCall);
   }
 };
 
@@ -829,6 +836,8 @@ Spriter_Base.prototype.initMembers = function() {
     this._repeat = false;
     this._spriteMask = {};
     this._spriteType = '';
+    this._animLimiter = null;
+    this._metaKeyArray = [];
 };
 
 Spriter_Base.prototype.setCharacter = function(character) {
@@ -843,6 +852,9 @@ Spriter_Base.prototype.setCharacter = function(character) {
     this._cellY = Number(this._character._spriter._cellY);
     this._speed = Number(this._character._spriter._speed);
     this._stop = this._character._spriter._stop;
+    this._waitCounter = this._character._spriter._animLimiter !== null ? this._character._spriter._animLimiter : limitCounter;
+    this._animLimiter = this._character._spriter._animLimiter !== null ? this._character._spriter._animLimiter : limitCounter;
+
     if (this._character._spriter._spriteMask) {
       this._spriteMask.available = this._character._spriter._spriteMask.available;
     }
@@ -866,7 +878,6 @@ Spriter_Base.prototype.getAnimation = function(name) {
 // Set sprite's objects, bones and layers
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.initSprite = function() {
-	   this._waitCounter = limitCounter;
     this._pathTime = this._animation.entity.animation[this._animationId].timeline;
     this._sprite = new Sprite();
     this._group = new PIXI.display.Group(0, true);
@@ -933,7 +944,7 @@ Spriter_Base.prototype.displaceSprite = function() {
 // Updating Sprite
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.update = function() {
-	if (this._waitCounter == limitCounter) {
+	if (this._waitCounter == this._animLimiter) {
 		Sprite_Base.prototype.update.call(this);
 	    this.checkCharacterState();
 	    this.updateSprite();
@@ -977,6 +988,7 @@ Spriter_Base.prototype.resetSpriterSprite = function() {
     this._character._spriter.var = {};
     this._animationFrame = 0;
     this._key = 0;
+    this._waitCounter = this._animLimiter;
     this.refreshSpriterSprite();
 };
 
@@ -996,6 +1008,73 @@ Spriter_Base.prototype.refreshSpriterSprite = function() {
 };
 
 Spriter_Base.prototype.start = function() {
+	this.getSpriteMetaKeyArray();
+};
+
+Spriter_Base.prototype.getSpriteMetaKeyArray = function() {
+    var map;
+    var id;
+    var event;
+    if (this._animation.entity.animation[this._animationId].hasOwnProperty('meta')) {
+
+        // Update Vars
+        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('varline')) {
+            var varline = this._animation.entity.animation[this._animationId].meta.varline;
+
+            // List of Vars
+            for (var i = 0; i < varline.length; i++) {
+
+            	// List of Var Keys
+                for (var j = 0; j < varline[i].key.length; j++) {
+                    time = Number(varline[i].key[j].time);
+
+                    // Check if metaKeyArray is empty
+                 	if (this._metaKeyArray.length == 0) {
+                 		this._metaKeyArray.push(time);
+                 	}
+                 	else {
+
+                 		// Check if time exists in metKeyArray
+                 		for (var i = 0; i < this._metaKeyArray.length; i++) {
+                 			if (this._metaKeyArray[i] == time) {
+                 				this._metaKeyArray[i] = time;
+                 				break;
+                 			}
+                 			else if (i == this._metaKeyArray.length - 1) {
+                 				this._metaKeyArray.push(time);
+                 			}
+                 		}
+                 	}
+                }
+            }
+        }
+
+        // Update Tags
+        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('tagline')) {
+            var tagline =  this._animation.entity.animation[this._animationId].meta.tagline;
+            for (var i = 0; i < tagline.key.length; i++) {
+                time = Number(tagline.key[i].time);
+
+                // Check if metaKeyArray is empty
+             	if (this._metaKeyArray.length == 0) {
+             		this._metaKeyArray.push(time);
+             	}
+             	else {
+
+             		// Check if time exists in metKeyArray
+             		for (var i = 0; i < this._metaKeyArray.length; i++) {
+             			if (this._metaKeyArray[i] == time) {
+             				this._metaKeyArray[i] = time;
+             				break;
+             			}
+             			else if (i == this._metaKeyArray.length - 1) {
+             				this._metaKeyArray.push(time);
+             			}
+             		}
+             	}
+            }
+        }
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1101,6 +1180,10 @@ Spriter_Base.prototype.checkChanges = function() {
     if (this.scale.y !== this._character._spriter._scaleY) {
       this.scale.y = this._character._spriter._scaleY
     }
+    if (this._character._spriter._animLimiter && this._animLimiter !== this._character._spriter._animLimiter) {
+      this._animLimiter = this._character._spriter._animLimiter;
+      this._waitCounter = this._animLimiter;
+    }
 };
 
 //-------------------------------------------------------------------------------------------------------------
@@ -1135,7 +1218,7 @@ Spriter_Base.prototype.fixKeys = function () {
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Base.prototype.updateFrame = function() {
     this._pathMain = this._animation.entity.animation[this._animationId].mainline.key;
-    var speed = this._speed * (limitCounter + 1);
+    var speed = this._speed * (this._animLimiter + 1);
     var nextKeyTime;
     var lastKeyTime = Number(this._pathMain[this._pathMain.length - 1].time);
 
@@ -2074,61 +2157,76 @@ Spriter_Base.prototype.updateTagsAndVars = function() {
     var map;
     var id;
     var event;
+
+    //Check if Meta exists
     if (this._animation.entity.animation[this._animationId].hasOwnProperty('meta')) {
-        // Update Vars
-        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('varline')) {
-            var varline = this._animation.entity.animation[this._animationId].meta.varline;
-            for (var i = 0; i < varline.length; i++) {
-                for (var j = 0; j < varline[i].key.length; j++) {
-                    time = Number(varline[i].key[j].time);
 
-                    // Making Sure that the Var updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
-                    if (this.isKeyTime(time)) {
-                        var varId = Number(varline[i].def);
-                        var def = this._animation.entity.var_defs.i[varId];
-                        if (def.type === "string") {
-                            this._character._spriter.var[def.name] = varline[i].key[j].val;
-                            this._globalAnimationInfo.var[def.name] = varline[i].key[j].val;
-                        }
-                        else if (def.type === "int") {
-                            this._character._spriter.var[def.name] = parseInt(varline[i].key[j].val);
-                            this._globalAnimationInfo.var[def.name] = parseInt(varline[i].key[j].val);
-                        }
-                        else if (def.type === "float") {
-                            this._character._spriter.var[def.name] = parseFloat(varline[i].key[j].val);
-                            this._globalAnimationInfo.var[def.name] = parseFloat(varline[i].key[j].val);
-                        }
-                    }
-                }
-            }
-        }
+    	for (var i = 0; i < this._metaKeyArray.length; i++) {
 
-        // Update Tags
-        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('tagline')) {
-            var tagline =  this._animation.entity.animation[this._animationId].meta.tagline;
-            this._character._spriter.tag = [];
-            this._globalAnimationInfo.tag = [];
-            for (var i = 0; i < tagline.key.length; i++) {
-                time = Number(tagline.key[i].time);
+    		// If time exists in Meta Key Array times
+    		if (this.isKeyTime(this._metaKeyArray[i])) {
 
-                // Making Sure that the Tag updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
-                if (this.isKeyTime(time)) {
-                    if (tagline.key[i].tag) {
-                        for (var j = 0; j < tagline.key[i].tag.length; j++) {
+		        // Update Vars
+		        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('varline')) {
+		            var varline = this._animation.entity.animation[this._animationId].meta.varline;
 
-                            var tag = tagline.key[i].tag[j];
-                            var tagName = this._animation.tag_list.i[tag.t];
-                            this._character._spriter.tag.push(tagName);
-                            this._globalAnimationInfo.tag.push(tagName);
+		            // Check all Vars
+		            for (var i = 0; i < varline.length; i++) {
 
-                        }
-                    }
-                } 
-            }
-        }
+		            	// Check all Var Keys
+		                for (var j = 0; j < varline[i].key.length; j++) {
+		                    time = Number(varline[i].key[j].time);
+		                    if (this.isKeyTime(time)) {
+		                        var varId = Number(varline[i].def);
+		                        var def = this._animation.entity.var_defs.i[varId];
+		                        if (def.type === "string") {
+		                            this._character._spriter.var[def.name] = varline[i].key[j].val;
+		                            this._globalAnimationInfo.var[def.name] = varline[i].key[j].val;
+		                        }
+		                        else if (def.type === "int") {
+		                            this._character._spriter.var[def.name] = parseInt(varline[i].key[j].val);
+		                            this._globalAnimationInfo.var[def.name] = parseInt(varline[i].key[j].val);
+		                        }
+		                        else if (def.type === "float") {
+		                            this._character._spriter.var[def.name] = parseFloat(varline[i].key[j].val);
+		                            this._globalAnimationInfo.var[def.name] = parseFloat(varline[i].key[j].val);
+		                        }
+		                    }
+		                }
+		            }
+		        }
+
+		        // Update Tags
+		        if (this._animation.entity.animation[this._animationId].meta.hasOwnProperty('tagline')) {
+		            var tagline =  this._animation.entity.animation[this._animationId].meta.tagline;
+		            this._character._spriter.tag = [];
+		            this._globalAnimationInfo.tag = [];
+
+		            // Check all Keys in Tagline
+		            for (var i = 0; i < tagline.key.length; i++) {
+		                time = Number(tagline.key[i].time);
+		                if (this.isKeyTime(time)) {
+		                    if (tagline.key[i].tag) {
+
+		                    	// Check all Tags in Key 
+		                        for (var j = 0; j < tagline.key[i].tag.length; j++) {
+
+		                            var tag = tagline.key[i].tag[j];
+		                            var tagName = this._animation.tag_list.i[tag.t];
+		                            this._character._spriter.tag.push(tagName);
+		                            this._globalAnimationInfo.tag.push(tagName);
+
+		                        }
+		                    }
+		                } 
+		            }
+		        }
+    		}
+    	}
     }
 };
 
+// Making Sure that the Meta updates either in its key, or, in case the key is skipped because of this._speed, right after the key. 
 Spriter_Base.prototype.isKeyTime = function (time) {
     return this._animationFrame == time || (this._animationFrame > time && this._animationFrame < time + this._speed);
 }
@@ -2211,6 +2309,7 @@ Spriter_Character.prototype.setCharacter = function(character) {
 // In case the Sprite has been used before, this._globalAnimationIfo will replace animation values
 //-------------------------------------------------------------------------------------------------------------
 Spriter_Character.prototype.start = function() {
+	Spriter_Base.prototype.start.call(this);
     this.setInitialCharacter();
 };
 
@@ -2596,11 +2695,6 @@ Sprite_Base.prototype.startAnimation = function(animation, mirror, delay) {
 //*************************************************************************************************************
 //-------------------------------------------------------------------------------------------------------------
 
-var $dataSpriterObjects = [];
-var spriterObjects = {};
-spriterObjects.name = '$dataSpriterObjects';
-spriterObjects.src = 'SpriterObjects.json';
-DataManager._databaseFiles.push(spriterObjects);
 
 //-------------------------------------------------------------------------------------------------------------
 //*************************************************************************************************************
@@ -2611,6 +2705,7 @@ DataManager._databaseFiles.push(spriterObjects);
 var $spriterAnimations = {};
 var $texturePacker = {};
 var $spriterTextures = {};
+var $dataSpriterObjects = [];
 var $dataSpriterImgAnimations = [];
 
 var spriter_alias_Scene_Boot_create = Scene_Boot.prototype.create;
